@@ -34,6 +34,7 @@ password: bitbank
 
 | Service | URL |
 | --- | --- |
+| `api_gateway` | `http://localhost:8080` |
 | `start_payment_service` | `http://localhost:8000` |
 | `debit_account_service` | `http://localhost:8001` |
 | `account_service` | `http://localhost:8002` |
@@ -48,7 +49,7 @@ password: bitbank
 ## Create An Account
 
 ```bash
-curl -X POST http://localhost:8002/accounts \
+curl -X POST http://localhost:8080/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{
     "customer_id": "customer-1",
@@ -81,7 +82,7 @@ PY
 ## Start A Payment
 
 ```bash
-curl -X POST http://localhost:8000/payments/start \
+curl -X POST http://localhost:8080/api/v1/payments/start \
   -H "Content-Type: application/json" \
   -d '{
     "customer_id": "customer-1",
@@ -125,7 +126,7 @@ APIs can be called directly for local testing.
 Notify merchant:
 
 ```bash
-curl -X POST http://localhost:8005/notifications/merchant \
+curl -X POST http://localhost:8080/api/v1/notifications/merchant \
   -H "Content-Type: application/json" \
   -d '{
     "transaction_id": "transaction-1",
@@ -141,7 +142,7 @@ curl -X POST http://localhost:8005/notifications/merchant \
 Notify customer:
 
 ```bash
-curl -X POST http://localhost:8006/notifications/customer \
+curl -X POST http://localhost:8080/api/v1/notifications/customer \
   -H "Content-Type: application/json" \
   -d '{
     "transaction_id": "transaction-1",
@@ -157,7 +158,7 @@ curl -X POST http://localhost:8006/notifications/customer \
 Issue receipt:
 
 ```bash
-curl -X POST http://localhost:8007/receipts \
+curl -X POST http://localhost:8080/api/v1/receipts \
   -H "Content-Type: application/json" \
   -d '{
     "transaction_id": "transaction-1",

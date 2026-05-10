@@ -59,6 +59,7 @@ Main rules:
 | `notify_customer_consumer` | - | Consume `payment.confirmed` and publish `customer.notified` |
 | `issue_receipt_service` | `8007` | Issue receipts after payment confirmation |
 | `issue_receipt_consumer` | - | Consume `payment.confirmed` and publish `receipt.issued` |
+| `api_gateway` | `8080` | Single HTTP entry point for public API routes |
 | `rabbitmq` | `5672`, `15672` | Message broker and management UI |
 
 ## Saga Flow
@@ -129,6 +130,17 @@ payment.
 ## API Entry Points
 
 Common local endpoints:
+
+- `POST http://localhost:8080/api/v1/accounts`
+- `POST http://localhost:8080/api/v1/payments/start`
+- `POST http://localhost:8080/api/v1/accounts/debit`
+- `POST http://localhost:8080/api/v1/payments/confirm`
+- `POST http://localhost:8080/api/v1/payments/reverse`
+- `POST http://localhost:8080/api/v1/notifications/merchant`
+- `POST http://localhost:8080/api/v1/notifications/customer`
+- `POST http://localhost:8080/api/v1/receipts`
+
+Direct service endpoints remain available for debugging:
 
 - `POST http://localhost:8002/accounts`
 - `POST http://localhost:8000/payments/start`
