@@ -21,6 +21,7 @@ def test_rabbitmq_event_publisher_publishes_payment_confirmed():
             PaymentConfirmed(
                 transaction_id="transaction-1",
                 customer_id="customer-1",
+                merchant_id="merchant-1",
                 account_id="account-1",
                 amount=Decimal("10.00"),
                 confirmed_at=datetime.now(timezone.utc),

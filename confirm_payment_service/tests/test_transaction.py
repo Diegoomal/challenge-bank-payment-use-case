@@ -28,6 +28,7 @@ def test_confirm_rejects_reversed_transaction():
     now = datetime.now(timezone.utc)
     transaction = Transaction(
         id="transaction-1",
+        merchant_id="merchant-1",
         status=TransactionStatus.REVERSED,
         created_at=now,
         updated_at=now,

@@ -17,15 +17,17 @@ class SQLiteTransactionRepository(TransactionRepository):
             connection.execute(
                 """
                 INSERT INTO transactions (
-                    id, status, confirmed_at, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?)
+                    id, merchant_id, status, confirmed_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
+                    merchant_id = COALESCE(excluded.merchant_id, transactions.merchant_id),
                     status = excluded.status,
                     confirmed_at = excluded.confirmed_at,
                     updated_at = excluded.updated_at
                 """,
                 (
                     transaction.id,
+                    transaction.merchant_id,
                     transaction.status.value,
                     transaction.confirmed_at.isoformat()
                     if transaction.confirmed_at else None,
@@ -38,7 +40,7 @@ class SQLiteTransactionRepository(TransactionRepository):
         with self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT id, status, confirmed_at, created_at, updated_at
+                SELECT id, merchant_id, status, confirmed_at, created_at, updated_at
                 FROM transactions
                 WHERE id = ?
                 """,
@@ -48,6 +50,7 @@ class SQLiteTransactionRepository(TransactionRepository):
             return None
         return Transaction(
             id=row["id"],
+            merchant_id=row["merchant_id"],
             status=TransactionStatus(row["status"]),
             confirmed_at=datetime.fromisoformat(row["confirmed_at"])
             if row["confirmed_at"] else None,
@@ -69,6 +72,7 @@ class SQLiteTransactionRepository(TransactionRepository):
                 """
                 CREATE TABLE IF NOT EXISTS transactions (
                     id TEXT PRIMARY KEY,
+                    merchant_id TEXT,
                     status TEXT NOT NULL,
                     confirmed_at TEXT,
                     created_at TEXT NOT NULL,
@@ -76,3 +80,9 @@ class SQLiteTransactionRepository(TransactionRepository):
                 )
                 """
             )
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(transactions)")
+            }
+            if "merchant_id" not in columns:
+                connection.execute("ALTER TABLE transactions ADD COLUMN merchant_id TEXT")

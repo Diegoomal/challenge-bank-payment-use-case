@@ -25,6 +25,7 @@ class ConfirmPaymentService(ForConfirmingPayment):
             PaymentConfirmed(
                 transaction_id=transaction.id,
                 customer_id=command.customer_id,
+                merchant_id=transaction.merchant_id or "",
                 account_id=command.account_id,
                 amount=command.amount,
                 confirmed_at=confirmed_at,

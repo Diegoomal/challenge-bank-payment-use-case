@@ -38,7 +38,9 @@ class SagaEventHandler:
 
     def handle_payment_started(self, message: PaymentStartedMessage) -> None:
         if self.transaction_repository.get_by_id(message.transaction_id) is None:
-            self.transaction_repository.save(Transaction.start(message.transaction_id))
+            self.transaction_repository.save(
+                Transaction.start(message.transaction_id, message.merchant_id)
+            )
 
     def handle_debit_completed(
         self,

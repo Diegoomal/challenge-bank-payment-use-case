@@ -23,7 +23,7 @@ class InMemoryTransactionRepository:
 
 def test_confirm_payment_confirms_transaction_and_publishes_event():
     repository = InMemoryTransactionRepository()
-    transaction = Transaction.start("transaction-1")
+    transaction = Transaction.start("transaction-1", "merchant-1")
     repository.save(transaction)
     publisher = InMemoryEventPublisher()
     service = ConfirmPaymentService(repository, publisher)
@@ -43,6 +43,7 @@ def test_confirm_payment_confirms_transaction_and_publishes_event():
     assert len(publisher.confirmed_events) == 1
     assert publisher.confirmed_events[0].event_name == "PaymentConfirmed"
     assert publisher.confirmed_events[0].transaction_id == "transaction-1"
+    assert publisher.confirmed_events[0].merchant_id == "merchant-1"
 
 
 def test_confirm_payment_fails_when_transaction_not_found():

@@ -7,7 +7,7 @@ from adapters.persistence.sqlite_transaction_repository import (
 
 def test_sqlite_transaction_repository_saves_and_gets_transaction(tmp_path):
     repository = SQLiteTransactionRepository(str(tmp_path / "confirm.db"))
-    transaction = Transaction.start("transaction-1")
+    transaction = Transaction.start("transaction-1", "merchant-1")
     transaction.confirm()
 
     repository.save(transaction)
@@ -15,6 +15,7 @@ def test_sqlite_transaction_repository_saves_and_gets_transaction(tmp_path):
     saved = repository.get_by_id("transaction-1")
     assert saved is not None
     assert saved.id == "transaction-1"
+    assert saved.merchant_id == "merchant-1"
     assert saved.status == TransactionStatus.CONFIRMED
     assert saved.confirmed_at is not None
 

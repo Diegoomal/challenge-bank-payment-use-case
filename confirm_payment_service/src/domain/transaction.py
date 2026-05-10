@@ -8,17 +8,19 @@ from domain.transaction_status import TransactionStatus
 @dataclass
 class Transaction:
     id: str
+    merchant_id: str | None
     status: TransactionStatus
     created_at: datetime
     updated_at: datetime
     confirmed_at: datetime | None = None
 
     @classmethod
-    def start(cls, transaction_id: str) -> "Transaction":
+    def start(cls, transaction_id: str, merchant_id: str | None = None) -> "Transaction":
         cls._validate_transaction_id(transaction_id)
         now = datetime.now(timezone.utc)
         return cls(
             id=transaction_id,
+            merchant_id=merchant_id,
             status=TransactionStatus.STARTED,
             created_at=now,
             updated_at=now,

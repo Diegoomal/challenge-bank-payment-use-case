@@ -7,6 +7,7 @@ from decimal import Decimal
 class PaymentConfirmed:
     transaction_id: str
     customer_id: str
+    merchant_id: str
     account_id: str
     amount: Decimal
     confirmed_at: datetime
@@ -20,6 +21,7 @@ class PaymentConfirmed:
             "event_name": self.event_name,
             "transaction_id": self.transaction_id,
             "customer_id": self.customer_id,
+            "merchant_id": self.merchant_id,
             "account_id": self.account_id,
             "amount": str(self.amount),
             "confirmed_at": self.confirmed_at.isoformat(),

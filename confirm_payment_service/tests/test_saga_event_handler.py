@@ -50,3 +50,4 @@ def test_saga_handler_projects_payment_started_and_confirms_debit_completed():
 
     assert result.status == TransactionStatus.CONFIRMED
     assert len(publisher.confirmed_events) == 1
+    assert publisher.confirmed_events[0].merchant_id == "merchant-1"
