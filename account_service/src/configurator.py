@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from adapters.api.routes import create_account_router
 from adapters.messaging.in_memory_event_publisher import InMemoryEventPublisher
-from adapters.messaging.rabbitmq_event_publisher import RabbitMQEventPublisher
+from adapters.messaging.outbox_event_publisher import OutboxEventPublisher
 from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository
 from application.ports.event_publisher import EventPublisher
 from application.ports.for_creating_account import ForCreatingAccount
@@ -14,7 +14,7 @@ from application.services.create_account_service import CreateAccountService
 def configure_event_publisher(rabbitmq_url: str | None = None) -> EventPublisher:
     rabbitmq_url = rabbitmq_url or os.getenv("RABBITMQ_URL")
     if rabbitmq_url:
-        return RabbitMQEventPublisher(rabbitmq_url)
+        return OutboxEventPublisher()
     return InMemoryEventPublisher()
 
 

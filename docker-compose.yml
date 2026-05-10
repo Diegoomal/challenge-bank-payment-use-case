@@ -150,6 +150,86 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  account_outbox:
+    build:
+      context: ./account_service
+      dockerfile: dockerfile
+    container_name: bitbank_account_outbox
+    command: ["python", "outbox_worker.py"]
+    environment:
+      DATABASE_PATH: /data/account.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - account_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  start_payment_outbox:
+    build:
+      context: ./start_payment_service
+      dockerfile: dockerfile
+    container_name: bitbank_start_payment_outbox
+    command: ["python", "outbox_worker.py"]
+    environment:
+      DATABASE_PATH: /data/start_payment.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - start_payment_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  debit_account_outbox:
+    build:
+      context: ./debit_account_service
+      dockerfile: dockerfile
+    container_name: bitbank_debit_account_outbox
+    command: ["python", "outbox_worker.py"]
+    environment:
+      DATABASE_PATH: /data/debit_account.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - debit_account_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  confirm_payment_outbox:
+    build:
+      context: ./confirm_payment_service
+      dockerfile: dockerfile
+    container_name: bitbank_confirm_payment_outbox
+    command: ["python", "outbox_worker.py"]
+    environment:
+      DATABASE_PATH: /data/confirm_payment.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - confirm_payment_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  reverse_payment_outbox:
+    build:
+      context: ./reverse_payment_service
+      dockerfile: dockerfile
+    container_name: bitbank_reverse_payment_outbox
+    command: ["python", "outbox_worker.py"]
+    environment:
+      DATABASE_PATH: /data/reverse_payment.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - reverse_payment_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   notify_merchant_service:
     build:
       context: ./notify_merchant_service
@@ -239,6 +319,54 @@ services:
       dockerfile: dockerfile
     container_name: bitbank_issue_receipt_consumer
     command: ["python", "consumer.py"]
+    environment:
+      DATABASE_PATH: /data/issue_receipt.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - issue_receipt_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notify_merchant_outbox:
+    build:
+      context: ./notify_merchant_service
+      dockerfile: dockerfile
+    container_name: bitbank_notify_merchant_outbox
+    command: ["python", "outbox_worker.py"]
+    environment:
+      DATABASE_PATH: /data/notify_merchant.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - notify_merchant_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notify_customer_outbox:
+    build:
+      context: ./notify_customer_service
+      dockerfile: dockerfile
+    container_name: bitbank_notify_customer_outbox
+    command: ["python", "outbox_worker.py"]
+    environment:
+      DATABASE_PATH: /data/notify_customer.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - notify_customer_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  issue_receipt_outbox:
+    build:
+      context: ./issue_receipt_service
+      dockerfile: dockerfile
+    container_name: bitbank_issue_receipt_outbox
+    command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/issue_receipt.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F

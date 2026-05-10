@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from adapters.api.routes import create_payment_router
 from adapters.messaging.in_memory_event_publisher import InMemoryEventPublisher
-from adapters.messaging.rabbitmq_event_publisher import RabbitMQEventPublisher
+from adapters.messaging.outbox_event_publisher import OutboxEventPublisher
 from adapters.messaging.rabbitmq_saga_consumer import RabbitMQSagaConsumer
 from adapters.messaging.saga_event_handler import SagaEventHandler
 from adapters.persistence.sqlite_transaction_repository import (
@@ -18,7 +18,7 @@ from application.services.confirm_payment_service import ConfirmPaymentService
 def configure_event_publisher(rabbitmq_url: str | None = None) -> EventPublisher:
     rabbitmq_url = rabbitmq_url or os.getenv("RABBITMQ_URL")
     if rabbitmq_url:
-        return RabbitMQEventPublisher(rabbitmq_url)
+        return OutboxEventPublisher()
     return InMemoryEventPublisher()
 
 
