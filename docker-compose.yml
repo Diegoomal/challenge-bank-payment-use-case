@@ -17,6 +17,53 @@ services:
       retries: 5
     restart: unless-stopped
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.63.0
+    container_name: bitbank_jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+    restart: unless-stopped
+
+  otel_collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: bitbank_otel_collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./observability/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - jaeger
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: bitbank_prometheus
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: bitbank_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: bitbank
+      GF_SECURITY_ADMIN_PASSWORD: bitbank
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - jaeger
+    restart: unless-stopped
+
   api_gateway:
     image: nginx:alpine
     container_name: bitbank_api_gateway
@@ -43,6 +90,9 @@ services:
     environment:
       DATABASE_PATH: /data/account.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: account_service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     ports:
       - "8002:8002"
     volumes:
@@ -60,6 +110,9 @@ services:
     environment:
       DATABASE_PATH: /data/start_payment.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: start_payment_service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     ports:
       - "8000:8000"
     volumes:
@@ -77,6 +130,9 @@ services:
     environment:
       DATABASE_PATH: /data/debit_account.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: debit_account_service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     ports:
       - "8001:8001"
     volumes:
@@ -94,6 +150,9 @@ services:
     environment:
       DATABASE_PATH: /data/confirm_payment.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: confirm_payment_service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     ports:
       - "8003:8003"
     volumes:
@@ -111,6 +170,9 @@ services:
     environment:
       DATABASE_PATH: /data/reverse_payment.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: reverse_payment_service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     ports:
       - "8004:8004"
     volumes:
@@ -129,6 +191,9 @@ services:
     environment:
       DATABASE_PATH: /data/reverse_payment.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: reverse_payment_consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - reverse_payment_data:/data
     depends_on:
@@ -145,6 +210,9 @@ services:
     environment:
       DATABASE_PATH: /data/confirm_payment.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: confirm_payment_consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - confirm_payment_data:/data
     depends_on:
@@ -161,6 +229,9 @@ services:
     environment:
       DATABASE_PATH: /data/debit_account.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: debit_account_consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - debit_account_data:/data
     depends_on:
@@ -177,6 +248,9 @@ services:
     environment:
       DATABASE_PATH: /data/account.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: account_outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - account_data:/data
     depends_on:
@@ -193,6 +267,9 @@ services:
     environment:
       DATABASE_PATH: /data/start_payment.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: start_payment_outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - start_payment_data:/data
     depends_on:
@@ -209,6 +286,9 @@ services:
     environment:
       DATABASE_PATH: /data/debit_account.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: debit_account_outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - debit_account_data:/data
     depends_on:
@@ -225,6 +305,9 @@ services:
     environment:
       DATABASE_PATH: /data/confirm_payment.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: confirm_payment_outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - confirm_payment_data:/data
     depends_on:
@@ -241,6 +324,9 @@ services:
     environment:
       DATABASE_PATH: /data/reverse_payment.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: reverse_payment_outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - reverse_payment_data:/data
     depends_on:
@@ -256,6 +342,9 @@ services:
     environment:
       DATABASE_PATH: /data/notify_merchant.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify_merchant_service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     ports:
       - "8005:8004"
     volumes:
@@ -274,6 +363,9 @@ services:
     environment:
       DATABASE_PATH: /data/notify_merchant.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify_merchant_consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - notify_merchant_data:/data
     depends_on:
@@ -289,6 +381,9 @@ services:
     environment:
       DATABASE_PATH: /data/notify_customer.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify_customer_service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     ports:
       - "8006:8004"
     volumes:
@@ -307,6 +402,9 @@ services:
     environment:
       DATABASE_PATH: /data/notify_customer.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify_customer_consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - notify_customer_data:/data
     depends_on:
@@ -322,6 +420,9 @@ services:
     environment:
       DATABASE_PATH: /data/issue_receipt.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: issue_receipt_service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     ports:
       - "8007:8000"
     volumes:
@@ -340,6 +441,9 @@ services:
     environment:
       DATABASE_PATH: /data/issue_receipt.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: issue_receipt_consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - issue_receipt_data:/data
     depends_on:
@@ -356,6 +460,9 @@ services:
     environment:
       DATABASE_PATH: /data/notify_merchant.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify_merchant_outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - notify_merchant_data:/data
     depends_on:
@@ -372,6 +479,9 @@ services:
     environment:
       DATABASE_PATH: /data/notify_customer.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify_customer_outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - notify_customer_data:/data
     depends_on:
@@ -388,6 +498,9 @@ services:
     environment:
       DATABASE_PATH: /data/issue_receipt.db
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: issue_receipt_outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
     volumes:
       - issue_receipt_data:/data
     depends_on:
@@ -405,3 +518,4 @@ volumes:
   notify_merchant_data:
   notify_customer_data:
   issue_receipt_data:
+  grafana_data:

@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from observability.context import get_correlation_id
+
 
 ROUTING_KEYS = {
     "publish_account_created": "account.created",
@@ -29,6 +31,8 @@ class OutboxEventPublisher:
             raise AttributeError(name)
 
         def publish(event) -> None:
+            payload = event.to_payload()
+            payload.setdefault("correlation_id", get_correlation_id())
             self._save_event(
                 aggregate_id=getattr(event, "transaction_id", None)
                 or getattr(event, "account_id", None)
@@ -36,7 +40,7 @@ class OutboxEventPublisher:
                 or getattr(event, "receipt_id", ""),
                 event_name=event.event_name,
                 routing_key=ROUTING_KEYS[name],
-                payload=event.to_payload(),
+                payload=payload,
             )
 
         return publish

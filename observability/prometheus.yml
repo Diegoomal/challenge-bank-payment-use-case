@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: account_service
+    static_configs:
+      - targets: ["account_service:8002"]
+  - job_name: start_payment_service
+    static_configs:
+      - targets: ["start_payment_service:8000"]
+  - job_name: debit_account_service
+    static_configs:
+      - targets: ["debit_account_service:8001"]
+  - job_name: confirm_payment_service
+    static_configs:
+      - targets: ["confirm_payment_service:8003"]
+  - job_name: reverse_payment_service
+    static_configs:
+      - targets: ["reverse_payment_service:8004"]
+  - job_name: notify_merchant_service
+    static_configs:
+      - targets: ["notify_merchant_service:8004"]
+  - job_name: notify_customer_service
+    static_configs:
+      - targets: ["notify_customer_service:8004"]
+  - job_name: issue_receipt_service
+    static_configs:
+      - targets: ["issue_receipt_service:8000"]

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sqlite3
 import time
@@ -6,6 +7,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pika
+
+from observability.context import set_correlation_id
+from observability.logging import configure_logging
+from observability.messaging import log_message_published
+
+logger = logging.getLogger(__name__)
 
 
 class OutboxWorker:
@@ -28,11 +35,21 @@ class OutboxWorker:
     def publish_pending(self, limit: int = 20) -> None:
         for event in self._get_pending(limit):
             try:
+                payload = json.loads(event["payload"])
+                set_correlation_id(payload.get("correlation_id"))
                 self._publish(event["routing_key"], event["payload"])
             except Exception as error:
                 self._mark_failed(event["id"], str(error))
+                logger.exception(
+                    "outbox publish failed",
+                    extra={
+                        "event": "outbox.publish_failed",
+                        "routing_key": event["routing_key"],
+                    },
+                )
             else:
                 self._mark_published(event["id"])
+                log_message_published(event["routing_key"], payload)
 
     def _get_pending(self, limit: int) -> list[sqlite3.Row]:
         with self._connect() as connection:
@@ -126,6 +143,7 @@ class OutboxWorker:
 
 
 def main() -> None:
+    configure_logging()
     rabbitmq_url = os.getenv("RABBITMQ_URL")
     if not rabbitmq_url:
         raise RuntimeError("RABBITMQ_URL is required to start the outbox worker")

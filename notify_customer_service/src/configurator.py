@@ -1,6 +1,8 @@
 import os
 
 from fastapi import FastAPI
+from observability.fastapi import configure_observability
+from observability.logging import configure_logging
 
 from adapters.api.routes import create_notification_router
 from adapters.messaging.in_memory_event_publisher import InMemoryEventPublisher
@@ -65,6 +67,8 @@ def create_app(
     rabbitmq_url: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Notify Customer Service")
+    configure_logging()
+    configure_observability(app, os.getenv("OTEL_SERVICE_NAME", "Notify Customer Service".lower().replace(" ", "_")))
     app.include_router(
         create_notification_router(configure_notify_customer(database_path, rabbitmq_url))
     )
