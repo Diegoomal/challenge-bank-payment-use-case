@@ -10,11 +10,12 @@ saga steps:
 2. `start_payment_service`: starts a payment transaction.
 3. `debit_account_service`: debits the customer account after receiving the
    payment started event.
+4. `confirm_payment_service`: confirms the payment after receiving the debit
+   completed event.
 
 The next planned services are:
 
 ```text
-confirm_payment_service
 reverse_payment_service
 notify_merchant_service
 notify_customer_service
@@ -69,6 +70,12 @@ Debit account consumer
   -> finds Account by customer_id
   -> debits balance when possible
   -> publishes debit.completed or debit.failed
+
+Confirm payment consumer
+  -> consumes payment.started and stores a local transaction projection
+  -> consumes debit.completed
+  -> confirms STARTED transactions
+  -> publishes payment.confirmed
 ```
 
 Events used:
@@ -77,6 +84,7 @@ Events used:
 payment.started
 DebitCompleted -> debit.completed
 DebitFailed    -> debit.failed
+payment.confirmed
 ```
 
 ## Services
@@ -87,6 +95,8 @@ DebitFailed    -> debit.failed
 | `start_payment_service` | `8000` | Start payment and publish `PaymentStarted` |
 | `debit_account_service` | `8001` | Debit account through the API |
 | `debit_account_consumer` | - | Consume `payment.started` and execute debit |
+| `confirm_payment_service` | `8003` | Confirm payment through the API |
+| `confirm_payment_consumer` | - | Consume `payment.started` and `debit.completed` |
 | `rabbitmq` | `5672`, `15672` | Broker and management UI |
 
 RabbitMQ Management:
@@ -283,6 +293,7 @@ Implemented:
 - `CreateAccount` with FastAPI, SQLite, and RabbitMQ publisher.
 - `StartPayment` with FastAPI, SQLite, and RabbitMQ publisher.
 - `DebitAccount` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
+- `ConfirmPayment` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
 - Unit and API tests for both services.
 - Docker Compose with RabbitMQ and persistent volumes.
 

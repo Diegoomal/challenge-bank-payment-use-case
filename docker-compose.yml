@@ -51,6 +51,39 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  confirm_payment_service:
+    build:
+      context: ./confirm_payment_service
+      dockerfile: dockerfile
+    container_name: bitbank_confirm_payment_service
+    environment:
+      DATABASE_PATH: /data/confirm_payment.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8003:8003"
+    volumes:
+      - confirm_payment_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  confirm_payment_consumer:
+    build:
+      context: ./confirm_payment_service
+      dockerfile: dockerfile
+    container_name: bitbank_confirm_payment_consumer
+    command: ["python", "consumer.py"]
+    environment:
+      DATABASE_PATH: /data/confirm_payment.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - confirm_payment_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   debit_account_service:
     build:
       context: ./debit_account_service
@@ -88,4 +121,5 @@ volumes:
   account_data:
   rabbitmq_data:
   start_payment_data:
+  confirm_payment_data:
   debit_account_data:
