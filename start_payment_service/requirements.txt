@@ -14,3 +14,5 @@ python-dotenv==1.1.1
 # Components
 fastapi==0.136.1
 aiosqlite==0.22.1
+uvicorn==0.38.0
+httpx==0.28.1
