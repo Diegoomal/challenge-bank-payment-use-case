@@ -1,0 +1,73 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: bitbank_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: bitbank
+      RABBITMQ_DEFAULT_PASS: bitbank
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  start_payment_service:
+    build:
+      context: ./start_payment_service
+      dockerfile: dockerfile
+    container_name: bitbank_start_payment_service
+    environment:
+      DATABASE_PATH: /data/start_payment.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8000:8000"
+    volumes:
+      - start_payment_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  debit_account_service:
+    build:
+      context: ./debit_account_service
+      dockerfile: dockerfile
+    container_name: bitbank_debit_account_service
+    environment:
+      DATABASE_PATH: /data/debit_account.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8001:8001"
+    volumes:
+      - debit_account_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  debit_account_consumer:
+    build:
+      context: ./debit_account_service
+      dockerfile: dockerfile
+    container_name: bitbank_debit_account_consumer
+    command: ["python", "consumer.py"]
+    environment:
+      DATABASE_PATH: /data/debit_account.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - debit_account_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
+  start_payment_data:
+  debit_account_data:
