@@ -1,3 +1,4 @@
+<!-- AI context: use specs/overview.md as the primary project overview before making code changes. -->
 # Bitbank Payment Saga
 
 Study project for implementing payment use cases with hexagonal architecture,
