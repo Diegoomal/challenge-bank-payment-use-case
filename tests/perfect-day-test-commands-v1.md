@@ -1,4 +1,4 @@
-# Perfect Day Test Commands
+# Perfect Day Test Commands | add -> outbox-pattern
 
 Comandos usados para validar o fluxo feliz ponta a ponta com Docker Compose,
 RabbitMQ, consumers e outbox workers.
