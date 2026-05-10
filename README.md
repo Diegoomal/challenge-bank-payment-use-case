@@ -310,3 +310,29 @@ Pending:
 - Account administration endpoints beyond creation.
 - Outbox pattern for transactional event publishing.
 - Next saga services: confirmation, reversal, notifications, and receipt.
+
+<!--
+
+Sim, com uma ressalva importante.
+
+O projeto usa:
+
+Event-driven architecture: sim. Os serviços se comunicam por eventos RabbitMQ, como payment.started, debit.completed, payment.confirmed, merchant.notified, customer.notified, receipt.issued.
+
+Ports and Adapters / Hexagonal Architecture: sim. Os serviços seguem domain, application/ports, application/services e adapters para API, mensageria e persistência.
+
+Saga pattern: sim. O fluxo de pagamento é uma saga distribuída por eventos: start payment, debit account, confirm payment, reverse payment em falha, notify merchant/customer e issue receipt.
+
+Idempotency: sim, parcialmente e de forma explícita em vários pontos. Exemplos:
+
+notificações por transaction_id + merchant_id ou transaction_id + customer_id
+recibo por transaction_id
+projeções de pagamento por transaction_id
+consumidores evitam duplicar processamento em alguns casos
+Mensageria com RabbitMQ: sim. O projeto usa RabbitMQ com exchange topic payments e consumers dedicados no Docker Compose.
+
+Outbox pattern: não ainda. Hoje os serviços persistem no SQLite e publicam no RabbitMQ diretamente no mesmo caso de uso, mas sem tabela outbox, relay/poller, marcação de eventos publicados ou garantia transacional entre banco e broker.
+
+Resumo: o projeto usa todas as técnicas listadas, exceto Outbox Pattern, que ainda está pendente.
+
+-->
