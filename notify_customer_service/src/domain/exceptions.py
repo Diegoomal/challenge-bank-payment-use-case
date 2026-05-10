@@ -1,0 +1,2 @@
+class InvalidTransactionStatus(ValueError):
+    pass

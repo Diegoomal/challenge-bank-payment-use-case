@@ -14,15 +14,9 @@ saga steps:
    completed event.
 5. `reverse_payment_service`: reverses the payment after receiving a debit
    failed event.
-
-The next planned services are:
-
-```text
-reverse_payment_service
-notify_merchant_service
-notify_customer_service
-issue_receipt_service
-```
+6. `notify_merchant_service`: ...
+7. `notify_customer_service`: ...
+8. `issue_receipt_service`: ...
 
 ## Architecture
 

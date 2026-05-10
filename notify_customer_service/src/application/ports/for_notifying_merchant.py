@@ -1,0 +1,4 @@
+from application.ports.for_notifying_customer import ForNotifyingCustomer
+
+
+ForNotifyingMerchant = ForNotifyingCustomer

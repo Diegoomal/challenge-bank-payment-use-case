@@ -1,0 +1,4 @@
+from application.ports.notification_repository import NotificationRepository
+
+
+TransactionRepository = NotificationRepository

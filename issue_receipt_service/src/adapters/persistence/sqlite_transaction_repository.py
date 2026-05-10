@@ -1,0 +1,4 @@
+from adapters.persistence.sqlite_receipt_repository import SQLiteReceiptRepository
+
+
+SQLiteTransactionRepository = SQLiteReceiptRepository

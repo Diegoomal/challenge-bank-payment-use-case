@@ -51,6 +51,40 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  debit_account_service:
+    build:
+      context: ./debit_account_service
+      dockerfile: dockerfile
+    container_name: bitbank_debit_account_service
+    environment:
+      DATABASE_PATH: /data/debit_account.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8001:8001"
+    volumes:
+      - debit_account_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+  
+  confirm_payment_service:
+    build:
+      context: ./confirm_payment_service
+      dockerfile: dockerfile
+    container_name: bitbank_confirm_payment_service
+    environment:
+      DATABASE_PATH: /data/confirm_payment.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8003:8003"
+    volumes:
+      - confirm_payment_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   reverse_payment_service:
     build:
       context: ./reverse_payment_service
@@ -84,23 +118,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  confirm_payment_service:
-    build:
-      context: ./confirm_payment_service
-      dockerfile: dockerfile
-    container_name: bitbank_confirm_payment_service
-    environment:
-      DATABASE_PATH: /data/confirm_payment.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-    ports:
-      - "8003:8003"
-    volumes:
-      - confirm_payment_data:/data
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
-
   confirm_payment_consumer:
     build:
       context: ./confirm_payment_service
@@ -112,23 +129,6 @@ services:
       RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
     volumes:
       - confirm_payment_data:/data
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
-
-  debit_account_service:
-    build:
-      context: ./debit_account_service
-      dockerfile: dockerfile
-    container_name: bitbank_debit_account_service
-    environment:
-      DATABASE_PATH: /data/debit_account.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-    ports:
-      - "8001:8001"
-    volumes:
-      - debit_account_data:/data
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -150,6 +150,105 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  notify_merchant_service:
+    build:
+      context: ./notify_merchant_service
+      dockerfile: dockerfile
+    container_name: bitbank_notify_merchant_service
+    environment:
+      DATABASE_PATH: /data/notify_merchant.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8005:8004"
+    volumes:
+      - notify_merchant_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notify_merchant_consumer:
+    build:
+      context: ./notify_merchant_service
+      dockerfile: dockerfile
+    container_name: bitbank_notify_merchant_consumer
+    command: ["python", "consumer.py"]
+    environment:
+      DATABASE_PATH: /data/notify_merchant.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - notify_merchant_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notify_customer_service:
+    build:
+      context: ./notify_customer_service
+      dockerfile: dockerfile
+    container_name: bitbank_notify_customer_service
+    environment:
+      DATABASE_PATH: /data/notify_customer.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8006:8004"
+    volumes:
+      - notify_customer_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notify_customer_consumer:
+    build:
+      context: ./notify_customer_service
+      dockerfile: dockerfile
+    container_name: bitbank_notify_customer_consumer
+    command: ["python", "consumer.py"]
+    environment:
+      DATABASE_PATH: /data/notify_customer.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - notify_customer_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  issue_receipt_service:
+    build:
+      context: ./issue_receipt_service
+      dockerfile: dockerfile
+    container_name: bitbank_issue_receipt_service
+    environment:
+      DATABASE_PATH: /data/issue_receipt.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8007:8000"
+    volumes:
+      - issue_receipt_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  issue_receipt_consumer:
+    build:
+      context: ./issue_receipt_service
+      dockerfile: dockerfile
+    container_name: bitbank_issue_receipt_consumer
+    command: ["python", "consumer.py"]
+    environment:
+      DATABASE_PATH: /data/issue_receipt.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - issue_receipt_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   account_data:
   rabbitmq_data:
@@ -157,3 +256,6 @@ volumes:
   start_payment_data:
   confirm_payment_data:
   debit_account_data:
+  notify_merchant_data:
+  notify_customer_data:
+  issue_receipt_data:

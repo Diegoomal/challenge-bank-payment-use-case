@@ -1,0 +1,4 @@
+from application.services.notify_merchant_service import NotifyMerchantService
+
+
+ReversePaymentService = NotifyMerchantService
