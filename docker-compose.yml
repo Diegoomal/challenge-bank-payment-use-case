@@ -51,6 +51,39 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  reverse_payment_service:
+    build:
+      context: ./reverse_payment_service
+      dockerfile: dockerfile
+    container_name: bitbank_reverse_payment_service
+    environment:
+      DATABASE_PATH: /data/reverse_payment.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8004:8004"
+    volumes:
+      - reverse_payment_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  reverse_payment_consumer:
+    build:
+      context: ./reverse_payment_service
+      dockerfile: dockerfile
+    container_name: bitbank_reverse_payment_consumer
+    command: ["python", "consumer.py"]
+    environment:
+      DATABASE_PATH: /data/reverse_payment.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    volumes:
+      - reverse_payment_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   confirm_payment_service:
     build:
       context: ./confirm_payment_service
@@ -120,6 +153,7 @@ services:
 volumes:
   account_data:
   rabbitmq_data:
+  reverse_payment_data:
   start_payment_data:
   confirm_payment_data:
   debit_account_data:

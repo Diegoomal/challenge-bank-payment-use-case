@@ -12,6 +12,8 @@ saga steps:
    payment started event.
 4. `confirm_payment_service`: confirms the payment after receiving the debit
    completed event.
+5. `reverse_payment_service`: reverses the payment after receiving a debit
+   failed event.
 
 The next planned services are:
 
@@ -76,6 +78,12 @@ Confirm payment consumer
   -> consumes debit.completed
   -> confirms STARTED transactions
   -> publishes payment.confirmed
+
+Reverse payment consumer
+  -> consumes payment.started and stores a local transaction projection
+  -> consumes debit.failed
+  -> reverses STARTED or PROCESSING transactions
+  -> publishes payment.reversed
 ```
 
 Events used:
@@ -85,6 +93,7 @@ payment.started
 DebitCompleted -> debit.completed
 DebitFailed    -> debit.failed
 payment.confirmed
+payment.reversed
 ```
 
 ## Services
@@ -97,6 +106,8 @@ payment.confirmed
 | `debit_account_consumer` | - | Consume `payment.started` and execute debit |
 | `confirm_payment_service` | `8003` | Confirm payment through the API |
 | `confirm_payment_consumer` | - | Consume `payment.started` and `debit.completed` |
+| `reverse_payment_service` | `8004` | Reverse payment through the API |
+| `reverse_payment_consumer` | - | Consume `payment.started` and `debit.failed` |
 | `rabbitmq` | `5672`, `15672` | Broker and management UI |
 
 RabbitMQ Management:
@@ -294,6 +305,7 @@ Implemented:
 - `StartPayment` with FastAPI, SQLite, and RabbitMQ publisher.
 - `DebitAccount` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
 - `ConfirmPayment` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
+- `ReversePayment` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
 - Unit and API tests for both services.
 - Docker Compose with RabbitMQ and persistent volumes.
 
