@@ -1,15 +1,15 @@
 # Bitbank Payment Saga
 
-Projeto de estudo para implementar casos de uso de pagamento com arquitetura
-hexagonal, comunicação por eventos e orquestração local com Docker Compose.
+Study project for implementing payment use cases with hexagonal architecture,
+event-driven communication, and local orchestration with Docker Compose.
 
-A implementação atual cobre os dois primeiros passos do fluxo:
+The current implementation covers the first two steps of the flow:
 
-1. `start_payment_service`: inicia uma transação de pagamento.
-2. `debit_account_service`: debita a conta do cliente após receber o evento de
-   pagamento iniciado.
+1. `start_payment_service`: starts a payment transaction.
+2. `debit_account_service`: debits the customer account after receiving the
+   payment started event.
 
-Os próximos serviços planejados são:
+The next planned services are:
 
 ```text
 confirm_payment_service
@@ -19,9 +19,9 @@ notify_customer_service
 issue_receipt_service
 ```
 
-## Arquitetura
+## Architecture
 
-Cada serviço segue uma estrutura hexagonal básica:
+Each service follows a basic hexagonal structure:
 
 ```text
 service/
@@ -42,34 +42,34 @@ service/
 └── dockerfile
 ```
 
-Regras principais:
+Main rules:
 
-- `domain` não depende de frameworks, banco ou mensageria.
-- `application/ports` define contratos de entrada e saída.
-- `application/services` implementa casos de uso.
-- `adapters` contém FastAPI, RabbitMQ e SQLite.
-- `configurator.py` monta as dependências concretas.
+- `domain` does not depend on frameworks, databases, or messaging.
+- `application/ports` defines inbound and outbound contracts.
+- `application/services` implements use cases.
+- `adapters` contains FastAPI, RabbitMQ, and SQLite details.
+- `configurator.py` wires concrete dependencies.
 
-## Fluxo Implementado
+## Implemented Flow
 
 ```text
 POST /payments/start
-  -> start_payment_service cria Transaction com status STARTED
-  -> salva em SQLite
-  -> publica payment.started no RabbitMQ
+  -> start_payment_service creates a Transaction with STARTED status
+  -> stores it in SQLite
+  -> publishes payment.started to RabbitMQ
 
 RabbitMQ exchange: payments
   routing key: payment.started
 
 Debit account consumer
-  -> consome payment.started
-  -> chama DebitAccountService
-  -> busca Account por customer_id
-  -> debita saldo quando possível
-  -> publica debit.completed ou debit.failed
+  -> consumes payment.started
+  -> calls DebitAccountService
+  -> finds Account by customer_id
+  -> debits balance when possible
+  -> publishes debit.completed or debit.failed
 ```
 
-Eventos usados:
+Events used:
 
 ```text
 payment.started
@@ -77,14 +77,14 @@ DebitCompleted -> debit.completed
 DebitFailed    -> debit.failed
 ```
 
-## Serviços
+## Services
 
-| Serviço | Porta | Responsabilidade |
+| Service | Port | Responsibility |
 | --- | --- | --- |
-| `start_payment_service` | `8000` | Iniciar pagamento e publicar `PaymentStarted` |
-| `debit_account_service` | `8001` | Debitar conta via API |
-| `debit_account_consumer` | - | Consumir `payment.started` e executar débito |
-| `rabbitmq` | `5672`, `15672` | Broker e painel de administração |
+| `start_payment_service` | `8000` | Start payment and publish `PaymentStarted` |
+| `debit_account_service` | `8001` | Debit account through the API |
+| `debit_account_consumer` | - | Consume `payment.started` and execute debit |
+| `rabbitmq` | `5672`, `15672` | Broker and management UI |
 
 RabbitMQ Management:
 
@@ -94,19 +94,19 @@ user: bitbank
 password: bitbank
 ```
 
-## Subir Ambiente
+## Start The Environment
 
 ```bash
 docker compose up -d --build
 ```
 
-Verificar containers:
+Check containers:
 
 ```bash
 docker compose ps
 ```
 
-Acompanhar logs:
+Follow logs:
 
 ```bash
 docker compose logs -f start_payment_service
@@ -114,19 +114,19 @@ docker compose logs -f debit_account_service
 docker compose logs -f debit_account_consumer
 ```
 
-Parar ambiente:
+Stop the environment:
 
 ```bash
 docker compose down
 ```
 
-Remover volumes e bancos locais dos containers:
+Remove volumes and container databases:
 
 ```bash
 docker compose down -v
 ```
 
-## Testar Start Payment
+## Test Start Payment
 
 ```bash
 curl -X POST http://localhost:8000/payments/start \
@@ -139,7 +139,7 @@ curl -X POST http://localhost:8000/payments/start \
   }'
 ```
 
-Resposta esperada:
+Expected response:
 
 ```json
 {
@@ -149,12 +149,12 @@ Resposta esperada:
 }
 ```
 
-Esse comando também publica `payment.started` no RabbitMQ.
+This command also publishes `payment.started` to RabbitMQ.
 
-## Criar Conta Para Teste
+## Create A Test Account
 
-Ainda não existe endpoint público para criação de conta. Para testar o caso
-feliz do débito, crie uma conta diretamente no SQLite do container:
+There is no public endpoint for account creation yet. To test the successful
+debit case, create an account directly in the container SQLite database:
 
 ```bash
 docker compose exec debit_account_service python - <<'PY'
@@ -174,7 +174,7 @@ print(account.id)
 PY
 ```
 
-## Testar Debit Account Pela API
+## Test Debit Account Through The API
 
 ```bash
 curl -X POST http://localhost:8001/accounts/debit \
@@ -186,7 +186,7 @@ curl -X POST http://localhost:8001/accounts/debit \
   }'
 ```
 
-Resposta esperada com conta cadastrada:
+Expected response with an existing account:
 
 ```json
 {
@@ -197,7 +197,7 @@ Resposta esperada com conta cadastrada:
 }
 ```
 
-Resposta esperada sem conta cadastrada:
+Expected response without an existing account:
 
 ```json
 {
@@ -208,21 +208,21 @@ Resposta esperada sem conta cadastrada:
 }
 ```
 
-## Testar Fluxo Pela Saga
+## Test The Saga Flow
 
-1. Suba o ambiente.
-2. Crie uma conta para `customer-1`.
-3. Chame `POST /payments/start`.
-4. Verifique o consumer:
+1. Start the environment.
+2. Create an account for `customer-1`.
+3. Call `POST /payments/start`.
+4. Check the consumer:
 
 ```bash
 docker compose logs -f debit_account_consumer
 ```
 
-Com saldo suficiente, o consumer deve processar o evento `payment.started`,
-debitar a conta e publicar `debit.completed`.
+With enough balance, the consumer should process the `payment.started` event,
+debit the account, and publish `debit.completed`.
 
-## Testes Automatizados
+## Automated Tests
 
 `start_payment_service`:
 
@@ -240,23 +240,23 @@ make test
 make lint
 ```
 
-Ou, dentro de cada serviço:
+Or, inside each service:
 
 ```bash
 make check
 ```
 
-## Estado Atual
+## Current Status
 
-Implementado:
+Implemented:
 
-- `StartPayment` com FastAPI, SQLite e RabbitMQ publisher.
-- `DebitAccount` com FastAPI, SQLite, RabbitMQ publisher e consumer.
-- Testes unitários e de API para os dois serviços.
-- Docker Compose com RabbitMQ e volumes persistentes.
+- `StartPayment` with FastAPI, SQLite, and RabbitMQ publisher.
+- `DebitAccount` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
+- Unit and API tests for both services.
+- Docker Compose with RabbitMQ and persistent volumes.
 
-Pendente:
+Pending:
 
-- Endpoint público para criação/administração de contas.
-- Outbox pattern para publicação transacional de eventos.
-- Serviços seguintes da saga: confirmação, reversão, notificações e recibo.
+- Public endpoint for account creation/administration.
+- Outbox pattern for transactional event publishing.
+- Next saga services: confirmation, reversal, notifications, and receipt.
