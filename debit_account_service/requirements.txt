@@ -12,4 +12,5 @@ pytest==9.0.3
 python-dotenv==1.1.1
 
 # Components
-# ...
+fastapi==0.136.1
+aiosqlite==0.22.1

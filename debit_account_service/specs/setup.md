@@ -1,7 +1,7 @@
-# Project Setup
+# Debit Account Service Setup
 
 This document explains how to prepare the local environment, install
-dependencies, run the example application, and execute checks.
+dependencies, run the current scaffold, and execute checks.
 
 ## Requirements
 
@@ -14,6 +14,12 @@ Expected tools:
 - Python 3.10, if using a virtual environment without Conda;
 - `make`, for the `Makefile` shortcuts.
 
+Runtime dependencies include:
+
+- FastAPI, planned for the HTTP driving adapter;
+- a SQLite dependency through `aiosqlite`, plus Python's built-in `sqlite3`
+  module when synchronous access is enough.
+
 ## Option 1: Conda Environment
 
 Create the environment from `env.yml`:
@@ -22,17 +28,17 @@ Create the environment from `env.yml`:
 conda env create -f env.yml
 ```
 
-The name defined in `env.yml` is `project-env`. Activate it:
+Activate it:
 
 ```bash
 conda activate project-env
 ```
 
-If you prefer another name, use:
+If you prefer a service-specific name, use:
 
 ```bash
-conda env create -n ports-adapters-env -f env.yml
-conda activate ports-adapters-env
+conda env create -n debit-account-env -f env.yml
+conda activate debit-account-env
 ```
 
 ## Option 2: `venv` Environment
@@ -53,7 +59,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Run The Project
+## Run The Current Scaffold
 
 Use the `Makefile` target:
 
@@ -67,7 +73,19 @@ This command runs:
 PYTHONPATH=src python3 src/main.py
 ```
 
-The script runs a demonstrative in-memory CRUD flow.
+The current script still runs the template example. It should be replaced by the
+account debit entry point when the service is implemented.
+
+## Future FastAPI Execution
+
+When the HTTP adapter is implemented, the expected local command is:
+
+```bash
+uvicorn src.main:app --reload
+```
+
+Add `uvicorn` to `requirements.txt` when the FastAPI application object is
+introduced.
 
 ## Run Tests
 
@@ -129,59 +147,12 @@ This command uses `pdoc` to generate documentation in `docs/`:
 PYTHONPATH=src pdoc configurator domain application adapters -o docs
 ```
 
-## Expected Structure After Setup
-
-```text
-.
-├── env.yml
-├── requirements.txt
-├── Makefile
-├── pytest.ini
-├── specs/
-│   ├── overview.md
-│   └── setup.md
-├── src/
-│   ├── configurator.py
-│   ├── main.py
-│   ├── adapters/
-│   ├── application/
-│   └── domain/
-└── tests/
-    ├── test_for_managing_users.py
-    └── test_in_memory_user_repository.py
-```
-
-## Common Issues
-
-### `ModuleNotFoundError` When Running Manually
-
-If you execute Python files without `make`, include `src` in `PYTHONPATH`:
-
-```bash
-PYTHONPATH=src python3 src/main.py
-```
-
-### Conda Environment Created With An Unexpected Name
-
-The `env.yml` file defines the name `project-env`. If any command mentions a
-different environment name, confirm which name was used:
-
-```bash
-conda env list
-```
-
-### Missing Dependencies
-
-Reinstall dependencies in the active environment:
-
-```bash
-pip install -r requirements.txt
-```
-
 ## Recommended Development Flow
 
 1. Activate the environment.
-2. Make small changes aligned with Ports and Adapters Architecture.
-3. Run `make test`.
-4. Run `make lint` when changing imports, formatting, or adding files.
-5. Use `make check` before finishing a delivery.
+2. Replace template user code with account debit domain code.
+3. Define ports before concrete adapters.
+4. Implement SQLite persistence behind driven ports.
+5. Add FastAPI routes as a driving adapter.
+6. Run `make test`.
+7. Run `make lint` when changing imports, formatting, or adding files.
