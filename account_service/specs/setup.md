@@ -1,7 +1,7 @@
-# Debit Account Service Setup
+# Account Service Setup
 
 This document explains how to prepare the local environment, install
-dependencies, run the current scaffold, and execute checks.
+dependencies, run the service, and execute checks.
 
 ## Requirements
 
@@ -12,54 +12,27 @@ Expected tools:
 
 - Conda or Mamba, recommended;
 - Python 3.10, if using a virtual environment without Conda;
-- `make`, for the `Makefile` shortcuts.
+- `make`, for the `Makefile` shortcuts;
+- Docker and Docker Compose, when running the full stack.
 
 Runtime dependencies include:
 
-- FastAPI, planned for the HTTP driving adapter;
-- a SQLite dependency through `aiosqlite`, plus Python's built-in `sqlite3`
-  module when synchronous access is enough.
+- FastAPI, used by the HTTP driving adapter;
+- Uvicorn, used to run the FastAPI application;
+- Pika, used by the RabbitMQ messaging adapter;
+- a SQLite dependency through `aiosqlite` for future async adapters, plus
+  Python's built-in `sqlite3` module used by the current synchronous adapter.
 
-## Option 1: Conda Environment
+## Conda Environment
 
-Create the environment from `env.yml`:
-
-```bash
-conda env create -f env.yml
-```
-
-Activate it:
+Create environment using `env.yml`:
 
 ```bash
-conda activate project-env
+conda env create -n account-service-env -f env.yml
+conda activate account-service-env
 ```
 
-If you prefer a service-specific name, use:
-
-```bash
-conda env create -n debit-account-env -f env.yml
-conda activate debit-account-env
-```
-
-## Option 2: `venv` Environment
-
-If you do not want to use Conda, create a virtual environment with Python 3.10:
-
-```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-On some systems, the binary may be named `python`:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-## Run The Current Scaffold
+## Run The Service
 
 Use the `Makefile` target:
 
@@ -67,25 +40,84 @@ Use the `Makefile` target:
 make run
 ```
 
-This command runs:
+This command runs the FastAPI application on port `8002`:
 
 ```bash
-PYTHONPATH=src python3 src/main.py
+PYTHONPATH=src uvicorn main:app --host 0.0.0.0 --port 8002
 ```
 
-The current script still runs the template example. It should be replaced by the
-account debit entry point when the service is implemented.
-
-## Future FastAPI Execution
-
-When the HTTP adapter is implemented, the expected local command is:
+You can also run it manually:
 
 ```bash
-uvicorn src.main:app --reload
+PYTHONPATH=src uvicorn main:app --reload --port 8002
 ```
 
-Add `uvicorn` to `requirements.txt` when the FastAPI application object is
-introduced.
+## Environment Variables
+
+Supported variables:
+
+- `DATABASE_PATH`: SQLite database path. Default: `account.db`.
+- `RABBITMQ_URL`: RabbitMQ connection URL. When unset, the service uses the
+  in-memory event publisher.
+
+Docker Compose sets:
+
+```text
+DATABASE_PATH=/data/account.db
+RABBITMQ_URL=amqp://bitbank:bitbank@rabbitmq:5672/%2F
+```
+
+## HTTP API
+
+Create an account:
+
+```bash
+curl -X POST http://localhost:8002/accounts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "customer-1",
+    "account_holder": "Customer One",
+    "initial_deposit": "100.00"
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "account_id": "...",
+  "customer_id": "customer-1",
+  "status": "ACTIVE",
+  "created_at": "..."
+}
+```
+
+If the customer already has an active account, the endpoint returns `400` with:
+
+```json
+{
+  "detail": "customer already has an active account"
+}
+```
+
+## Docker
+
+From the repository root, run:
+
+```bash
+docker compose up -d --build account_service
+```
+
+The root `docker-compose.yml` runs this service on port `8002` and stores the
+SQLite database in the `account_data` volume.
+
+RabbitMQ Management is available at:
+
+```text
+http://localhost:15672
+user: bitbank
+password: bitbank
+```
 
 ## Run Tests
 
@@ -150,9 +182,10 @@ PYTHONPATH=src pdoc configurator domain application adapters -o docs
 ## Recommended Development Flow
 
 1. Activate the environment.
-2. Replace template user code with account debit domain code.
-3. Define ports before concrete adapters.
-4. Implement SQLite persistence behind driven ports.
-5. Add FastAPI routes as a driving adapter.
-6. Run `make test`.
-7. Run `make lint` when changing imports, formatting, or adding files.
+2. Define or update ports before concrete adapters.
+3. Keep account lifecycle rules in the domain or application service.
+4. Implement SQLite persistence behind `AccountRepository`.
+5. Publish domain events through `EventPublisher`.
+6. Expose HTTP behavior through FastAPI adapters.
+7. Run `make test`.
+8. Run `make lint` when changing imports, formatting, or adding files.

@@ -1,0 +1,60 @@
+1. Sobe os containers
+2. Cadastra usuário 1
+3. Cadastra usuário 2
+4. Prepara conta no `debit_account_service`
+5. Usuário 1 transfere/paga para usuário 2
+6. Consumer debita saldo
+7. Verifica logs
+
+docker compose up -d --build
+
+http://localhost:15672
+user: bitbank
+password: bitbank
+
+// CREATE USER
+
+curl -X POST http://localhost:8002/accounts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "customer-1",
+    "account_holder": "Customer One",
+    "initial_deposit": "100.00"
+  }'
+
+{
+  "customer_id": "customer-1",
+  "status": "ACTIVE",
+}
+
+// CREATE USER
+
+curl -X POST http://localhost:8002/accounts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "customer-2",
+    "account_holder": "Customer Two",
+    "initial_deposit": "50.00"
+  }'
+
+{
+  "customer_id": "customer-2",
+  "status": "ACTIVE",
+}
+
+// START PAYMENT
+
+curl -X POST http://localhost:8000/payments/start \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "customer-1",
+    "merchant_id": "customer-2",
+    "amount": "20.00",
+    "payment_method": "ACCOUNT_BALANCE"
+  }'
+
+{
+  "transaction_id": "...",
+  "status": "STARTED",
+  "created_at": "..."
+}

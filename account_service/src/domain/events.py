@@ -4,46 +4,23 @@ from decimal import Decimal
 
 
 @dataclass(frozen=True)
-class DebitCompleted:
-    transaction_id: str
+class AccountCreated:
     account_id: str
     customer_id: str
-    amount: Decimal
+    account_holder: str
+    initial_deposit: Decimal
     occurred_at: datetime
 
     @property
     def event_name(self) -> str:
-        return "DebitCompleted"
+        return "AccountCreated"
 
     def to_payload(self) -> dict[str, str]:
         return {
             "event_name": self.event_name,
-            "transaction_id": self.transaction_id,
             "account_id": self.account_id,
             "customer_id": self.customer_id,
-            "amount": str(self.amount),
-            "occurred_at": self.occurred_at.isoformat(),
-        }
-
-
-@dataclass(frozen=True)
-class DebitFailed:
-    transaction_id: str
-    customer_id: str
-    amount: Decimal
-    reason: str
-    occurred_at: datetime
-
-    @property
-    def event_name(self) -> str:
-        return "DebitFailed"
-
-    def to_payload(self) -> dict[str, str]:
-        return {
-            "event_name": self.event_name,
-            "transaction_id": self.transaction_id,
-            "customer_id": self.customer_id,
-            "amount": str(self.amount),
-            "reason": self.reason,
+            "account_holder": self.account_holder,
+            "initial_deposit": str(self.initial_deposit),
             "occurred_at": self.occurred_at.isoformat(),
         }

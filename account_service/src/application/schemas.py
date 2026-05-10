@@ -1,19 +1,20 @@
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
-from domain.debit_status import DebitStatus
+from domain.account_status import AccountStatus
 
 
 @dataclass(frozen=True)
-class DebitAccountCommand:
-    transaction_id: str
+class CreateAccountCommand:
     customer_id: str
-    amount: Decimal
+    account_holder: str
+    initial_deposit: Decimal
 
 
 @dataclass(frozen=True)
-class DebitAccountResult:
-    account_id: str | None
-    transaction_id: str
-    status: DebitStatus
-    reason: str | None = None
+class CreateAccountResult:
+    account_id: str
+    customer_id: str
+    status: AccountStatus
+    created_at: datetime

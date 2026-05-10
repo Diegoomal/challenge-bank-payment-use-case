@@ -20,43 +20,11 @@ Runtime dependencies include:
 - a SQLite dependency through `aiosqlite`, plus Python's built-in `sqlite3`
   module when synchronous access is enough.
 
-## Option 1: Conda Environment
-
-Create the environment from `env.yml`:
+## Conda Environment
 
 ```bash
-conda env create -f env.yml
-```
-
-Activate it:
-
-```bash
-conda activate project-env
-```
-
-If you prefer a service-specific name, use:
-
-```bash
-conda env create -n debit-account-env -f env.yml
-conda activate debit-account-env
-```
-
-## Option 2: `venv` Environment
-
-If you do not want to use Conda, create a virtual environment with Python 3.10:
-
-```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-On some systems, the binary may be named `python`:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+conda env create -n debit-account-service-env -f env.yml
+conda activate debit-account-service-env
 ```
 
 ## Run The Current Scaffold

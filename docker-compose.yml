@@ -17,6 +17,23 @@ services:
       retries: 5
     restart: unless-stopped
 
+  account_service:
+    build:
+      context: ./account_service
+      dockerfile: dockerfile
+    container_name: bitbank_account_service
+    environment:
+      DATABASE_PATH: /data/account.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+    ports:
+      - "8002:8002"
+    volumes:
+      - account_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   start_payment_service:
     build:
       context: ./start_payment_service
@@ -68,6 +85,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  account_data:
   rabbitmq_data:
   start_payment_data:
   debit_account_data:

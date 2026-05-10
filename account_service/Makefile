@@ -1,7 +1,7 @@
 .PHONY: run test lint docs check
 
 run:
-	PYTHONPATH=src python3 src/main.py
+	PYTHONPATH=src uvicorn main:app --host 0.0.0.0 --port 8002
 
 test:
 	pytest

@@ -3,25 +3,19 @@ import json
 import pika
 
 from application.ports.event_publisher import EventPublisher
-from domain.events import DebitCompleted, DebitFailed
+from domain.events import AccountCreated
 
 
 class RabbitMQEventPublisher(EventPublisher):
     def __init__(
         self,
         rabbitmq_url: str,
-        exchange_name: str = "payments",
+        exchange_name: str = "accounts",
     ) -> None:
         self.rabbitmq_url = rabbitmq_url
         self.exchange_name = exchange_name
 
-    def publish_debit_completed(self, event: DebitCompleted) -> None:
-        self._publish("debit.completed", event.to_payload())
-
-    def publish_debit_failed(self, event: DebitFailed) -> None:
-        self._publish("debit.failed", event.to_payload())
-
-    def _publish(self, routing_key: str, payload: dict[str, str]) -> None:
+    def publish_account_created(self, event: AccountCreated) -> None:
         parameters = pika.URLParameters(self.rabbitmq_url)
         connection = pika.BlockingConnection(parameters)
         try:
@@ -33,8 +27,8 @@ class RabbitMQEventPublisher(EventPublisher):
             )
             channel.basic_publish(
                 exchange=self.exchange_name,
-                routing_key=routing_key,
-                body=json.dumps(payload).encode("utf-8"),
+                routing_key="account.created",
+                body=json.dumps(event.to_payload()).encode("utf-8"),
                 properties=pika.BasicProperties(
                     content_type="application/json",
                     delivery_mode=pika.DeliveryMode.Persistent,

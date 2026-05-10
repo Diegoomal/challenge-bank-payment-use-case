@@ -1,11 +1,8 @@
 from typing import Protocol
 
-from domain.events import DebitCompleted, DebitFailed
+from domain.events import AccountCreated
 
 
 class EventPublisher(Protocol):
-    def publish_debit_completed(self, event: DebitCompleted) -> None:
-        pass
-
-    def publish_debit_failed(self, event: DebitFailed) -> None:
+    def publish_account_created(self, event: AccountCreated) -> None:
         pass

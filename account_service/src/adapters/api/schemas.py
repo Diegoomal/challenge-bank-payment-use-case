@@ -1,18 +1,19 @@
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
-from domain.debit_status import DebitStatus
+from domain.account_status import AccountStatus
 
 
-class DebitAccountRequest(BaseModel):
-    transaction_id: str = Field(..., min_length=1)
+class CreateAccountRequest(BaseModel):
     customer_id: str = Field(..., min_length=1)
-    amount: Decimal = Field(..., gt=0)
+    account_holder: str = Field(..., min_length=1)
+    initial_deposit: Decimal = Field(..., ge=0)
 
 
-class DebitAccountResponse(BaseModel):
-    account_id: str | None
-    transaction_id: str
-    status: DebitStatus
-    reason: str | None = None
+class CreateAccountResponse(BaseModel):
+    account_id: str
+    customer_id: str
+    status: AccountStatus
+    created_at: datetime

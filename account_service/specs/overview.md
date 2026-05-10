@@ -1,48 +1,43 @@
-# Debit Account Service Overview
+# Account Service Overview
 
-This repository contains the scaffold for `debit_account_service`, a Python
-service that will follow Ports and Adapters Architecture, also known as
-Hexagonal Architecture.
+This repository contains `account_service`, a Python service that follows Ports
+and Adapters Architecture, also known as Hexagonal Architecture.
 
-The service belongs to a payment saga. It runs after `start_payment_service` and
-should attempt to debit the payer account before the saga continues to payment
-confirmation or reversal.
+The service belongs to the Account bounded context. It manages the lifecycle of
+customer financial accounts and publishes account creation events for other
+services to consume without coupling to this service internals.
 
 Use this document as the initial context when working with AI coding agents such
 as Codex, Claude, or similar tools.
 
 ## Goal
 
-The service will debit a payer account for a started payment.
+The service creates customer financial accounts.
 
-Planned debit fields:
+Account fields:
 
 - `id`
-- `payment_id`
-- `payer_account_id`
-- `amount`
-- `currency`
+- `customer_id`
+- `account_holder`
+- `balance`
 - `status`
-- `failure_reason`
-- `idempotency_key`
 - `created_at`
 - `updated_at`
 
-Planned operations for the driving port:
+The main operations are exposed by the `ForCreatingAccount` driving port:
 
-- debit an account for a payment;
-- get a debit attempt by ID;
-- get debit attempts by payment ID;
-- mark debit as succeeded;
-- mark debit as failed.
+- create an account;
+- reject invalid account creation requests;
+- prevent a customer from having more than one active account.
 
-The initial business rules should include:
+The initial business rules are:
 
-- amount must be greater than zero;
-- payment and payer account identifiers are required;
-- debit requests must be idempotent;
-- an account cannot be debited when funds are insufficient;
-- debit result must be persisted before the next saga step is triggered.
+- an account must have a unique identifier;
+- `customer_id` is required;
+- `account_holder` is required;
+- initial deposit cannot be negative;
+- newly created accounts start with status `ACTIVE`;
+- a customer cannot have more than one active account.
 
 ## Architecture
 
@@ -53,75 +48,147 @@ src/
 ├── configurator.py
 ├── main.py
 ├── domain/
+│   ├── account.py
+│   ├── account_status.py
+│   └── events.py
 ├── application/
+│   ├── schemas.py
 │   ├── ports/
+│   │   ├── account_repository.py
+│   │   ├── event_publisher.py
+│   │   └── for_creating_account.py
 │   └── services/
+│       └── create_account_service.py
 └── adapters/
-    ├── cli/
-    ├── persistence/
-    └── messaging/
+    ├── api/
+    │   ├── routes.py
+    │   └── schemas.py
+    ├── messaging/
+    │   ├── in_memory_event_publisher.py
+    │   └── rabbitmq_event_publisher.py
+    └── persistence/
+        └── sqlite_account_repository.py
 ```
 
 ### `domain`
 
-Will contain pure account debit entities and value objects. This package must
-not depend on FastAPI, SQLite, messaging clients, or concrete adapters.
+Contains pure account entities, enums, and domain events.
+
+- `src/domain/account.py`
+  - defines `Account`, the aggregate root;
+  - validates required customer and holder data;
+  - validates non-negative initial deposit;
+  - creates accounts with `ACTIVE` status.
+- `src/domain/account_status.py`
+  - defines `ACTIVE`, `BLOCKED`, and `CLOSED` statuses.
+- `src/domain/events.py`
+  - defines `AccountCreated` and its serializable payload.
+
+This package must not depend on FastAPI, SQLite, RabbitMQ, messaging clients,
+or concrete adapters.
 
 ### `application/ports`
 
-Will contain the application ports:
+Contains the ports of the application hexagon.
 
-- driving ports for API, CLI, or message consumers that request debits;
-- driven ports for debit persistence, account balance lookup, account balance
-  mutation, idempotency lookup, and saga/event publishing.
+- `for_creating_account.py`
+  - driving port for the `CreateAccount` use case.
+- `account_repository.py`
+  - driven persistence port used by the application.
+- `event_publisher.py`
+  - driven messaging port used to publish domain events.
 
 Driving ports are called by adapters. Driven ports are implemented by adapters.
 
 ### `application/services`
 
-Will contain use cases that implement the driving ports and enforce debit
-rules. Services may depend on the domain and interfaces, but not on concrete
-adapters.
+Contains application services.
+
+- `create_account_service.py`
+  - implements `ForCreatingAccount`;
+  - checks whether the customer already has an active account;
+  - creates and persists the `Account` aggregate;
+  - publishes `AccountCreated`.
+
+Services may depend on the domain and interfaces, but not on concrete adapters.
 
 ### `adapters`
 
-Will contain concrete adapters around the hexagon:
+Contains concrete adapters around the hexagon.
 
-- FastAPI HTTP routes as a driving adapter;
-- SQLite persistence as a driven adapter;
-- messaging consumer or producer adapters for saga communication;
-- CLI only as a development or demonstration adapter if still useful.
+- `api/routes.py`
+  - FastAPI driving adapter exposing `POST /accounts`.
+- `api/schemas.py`
+  - HTTP request and response schemas.
+- `persistence/sqlite_account_repository.py`
+  - SQLite driven adapter implementing `AccountRepository`.
+- `messaging/in_memory_event_publisher.py`
+  - test and local fallback publisher.
+- `messaging/rabbitmq_event_publisher.py`
+  - RabbitMQ driven adapter that publishes `account.created`.
 
 ### `configurator.py`
 
-Will build concrete dependencies. Expected direction:
+Builds concrete dependencies. Expected direction:
 
 ```python
-SQLiteDebitRepository -> DebitAccountService -> FastAPI routes or messaging consumer
+SQLiteAccountRepository -> CreateAccountService -> FastAPI routes
+RabbitMQEventPublisher  -> CreateAccountService
 ```
+
+If `RABBITMQ_URL` is present, the service uses RabbitMQ. Otherwise, it falls
+back to the in-memory publisher.
 
 Adapters must not be instantiated directly inside application services.
 
+## Messaging
+
+Published event:
+
+```text
+AccountCreated
+```
+
+RabbitMQ mapping:
+
+```text
+exchange: accounts
+routing_key: account.created
+```
+
+Payload:
+
+```json
+{
+  "event_name": "AccountCreated",
+  "account_id": "...",
+  "customer_id": "customer-1",
+  "account_holder": "Customer One",
+  "initial_deposit": "100.00",
+  "occurred_at": "..."
+}
+```
+
 ## Dependencies
 
-`requirements.txt` includes FastAPI for the future HTTP adapter and `aiosqlite`
-for asynchronous SQLite access. Python also includes the standard library
-`sqlite3` module, which can be used if the implementation stays synchronous.
+`requirements.txt` includes FastAPI for the HTTP adapter, `pika` for RabbitMQ,
+and `aiosqlite` for future asynchronous SQLite access. The current persistence
+adapter uses Python's built-in `sqlite3` module.
 
 ## Tests
 
 Tests live in `tests/`.
 
-Current tests still reflect the template scaffold and should be replaced when
-the debit domain is implemented. Future tests should cover:
+Current tests cover:
 
-- successful account debit;
-- invalid amount rejection;
-- missing payment or account identifiers;
-- idempotency behavior;
-- insufficient funds behavior;
-- persistence adapter behavior;
-- API contract once FastAPI routes are added.
+- account creation with `ACTIVE` status;
+- negative initial deposit rejection;
+- missing account holder rejection;
+- duplicate active account rejection;
+- `AccountCreated` publication;
+- SQLite persistence behavior;
+- FastAPI `POST /accounts` contract;
+- RabbitMQ publisher exchange and routing key behavior.
 
 `pytest.ini` configures `pythonpath = src`, so imports start from `src`.
 
@@ -130,14 +197,15 @@ the debit domain is implemented. Future tests should cover:
 When changing the project, follow these rules:
 
 - keep the application hexagon directly under `src`;
-- keep entities pure under `src/domain`;
+- keep entities and domain events pure under `src/domain`;
 - define driving and driven ports under `src/application/ports`;
 - implement use cases under `src/application/services`;
 - keep concrete adapters under `src/adapters`;
 - do not import concrete adapters from domain or application services;
 - wire concrete dependencies in `src/configurator.py`;
-- use SQLite only through persistence or account adapters;
-- expose FastAPI only through an adapter layer;
+- use SQLite only through persistence adapters;
+- expose FastAPI only through adapter layers;
+- publish events only through `EventPublisher`;
 - add or update tests under `tests/` when behavior changes.
 
 ## AI Agent Guidelines

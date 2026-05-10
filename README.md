@@ -3,10 +3,12 @@
 Study project for implementing payment use cases with hexagonal architecture,
 event-driven communication, and local orchestration with Docker Compose.
 
-The current implementation covers the first two steps of the flow:
+The current implementation covers account creation and the first two payment
+saga steps:
 
-1. `start_payment_service`: starts a payment transaction.
-2. `debit_account_service`: debits the customer account after receiving the
+1. `account_service`: creates customer financial accounts.
+2. `start_payment_service`: starts a payment transaction.
+3. `debit_account_service`: debits the customer account after receiving the
    payment started event.
 
 The next planned services are:
@@ -81,6 +83,7 @@ DebitFailed    -> debit.failed
 
 | Service | Port | Responsibility |
 | --- | --- | --- |
+| `account_service` | `8002` | Create accounts and publish `AccountCreated` |
 | `start_payment_service` | `8000` | Start payment and publish `PaymentStarted` |
 | `debit_account_service` | `8001` | Debit account through the API |
 | `debit_account_consumer` | - | Consume `payment.started` and execute debit |
@@ -125,6 +128,33 @@ Remove volumes and container databases:
 ```bash
 docker compose down -v
 ```
+
+## Test Account Creation
+
+```bash
+curl -X POST http://localhost:8002/accounts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "customer-1",
+    "account_holder": "Customer One",
+    "initial_deposit": "100.00"
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "account_id": "...",
+  "customer_id": "customer-1",
+  "status": "ACTIVE",
+  "created_at": "..."
+}
+```
+
+This command also publishes `account.created` to RabbitMQ. The
+`debit_account_service` still uses its own SQLite database, so account
+creation is not yet projected automatically into the debit service.
 
 ## Test Start Payment
 
@@ -250,6 +280,7 @@ make check
 
 Implemented:
 
+- `CreateAccount` with FastAPI, SQLite, and RabbitMQ publisher.
 - `StartPayment` with FastAPI, SQLite, and RabbitMQ publisher.
 - `DebitAccount` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
 - Unit and API tests for both services.
@@ -257,6 +288,7 @@ Implemented:
 
 Pending:
 
-- Public endpoint for account creation/administration.
+- Projection of `account.created` into `debit_account_service`.
+- Account administration endpoints beyond creation.
 - Outbox pattern for transactional event publishing.
 - Next saga services: confirmation, reversal, notifications, and receipt.
