@@ -1,5 +1,5 @@
 <!-- AI context: use specs/overview.md as the primary project overview before making code changes. -->
-# Bitbank Payment Saga
+# Bitbank Payment Saga / branch: base
 
 Study project for implementing payment use cases with hexagonal architecture,
 event-driven communication, and local orchestration with Docker Compose.
