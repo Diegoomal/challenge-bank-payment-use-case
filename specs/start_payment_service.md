@@ -1,87 +1,87 @@
 # Start Payment Service
 
-## Descrição de Negócio
+## Business Description
 
-O `start_payment_service` é responsável por iniciar uma transação de pagamento.
+The `start_payment_service` is responsible for starting a payment transaction.
 
-Este serviço pertence ao contexto de Pagamento e representa a primeira etapa da saga de pagamento.
+This service belongs to the Payment context and represents the first step of the payment saga.
 
-Ele recebe uma solicitação de pagamento, cria uma nova `Transaction` com status `STARTED`, persiste a transação e publica o evento `payment.started`.
+It receives a payment request, creates a new `Transaction` with `STARTED` status, persists the transaction, and publishes the `payment.started` event.
 
 ## Bounded Context
 
-Pagamento.
+Payment.
 
 ## Ubiquitous Language
 
-- Payment: pagamento solicitado por um cliente.
-- Transaction: registro principal do pagamento.
-- TransactionId: identificador único da transação.
-- TransactionStatus: estado atual da transação.
-- PaymentMethod: método utilizado para realizar o pagamento.
-- Amount: valor monetário da transação.
-- Customer: cliente pagador.
-- Merchant: recebedor do pagamento.
-- PaymentStarted: evento que informa que uma transação de pagamento foi iniciada.
+- Payment: a payment requested by a customer.
+- Transaction: the main payment record.
+- TransactionId: the unique transaction identifier.
+- TransactionStatus: the current transaction state.
+- PaymentMethod: the method used to perform the payment.
+- Amount: the monetary amount of the transaction.
+- Customer: the paying customer.
+- Merchant: the payment recipient.
+- PaymentStarted: event that reports that a payment transaction was started.
 
 ## Aggregate Root
 
 ### Transaction
 
-A `Transaction` é o Aggregate Root do contexto de pagamento.
+The `Transaction` is the Aggregate Root of the Payment context.
 
-Ela controla o início do ciclo de vida do pagamento e garante que uma transação seja criada em estado válido.
+It controls the start of the payment lifecycle and ensures that a transaction is created in a valid state.
 
-## Estados da Transação
+## Transaction States
 
 - STARTED
 - CONFIRMED
 - REVERSED
 - FAILED
 
-## Invariantes
+## Invariants
 
-- Uma transação deve possuir um `transaction_id` único.
-- Uma transação deve possuir `customer_id`.
-- Uma transação deve possuir `merchant_id`.
-- Uma transação deve possuir valor maior que zero.
-- Uma transação deve possuir um método de pagamento válido.
-- Uma transação recém-criada deve iniciar com status `STARTED`.
-- Uma transação não deve ser confirmada no momento da criação.
-- Uma transação não deve ser revertida no momento da criação.
+- A transaction must have a unique `transaction_id`.
+- A transaction must have a `customer_id`.
+- A transaction must have a `merchant_id`.
+- A transaction amount must be greater than zero.
+- A transaction must have a valid payment method.
+- A newly created transaction must start with `STARTED` status.
+- A transaction must not be confirmed at creation time.
+- A transaction must not be reversed at creation time.
 
-## Caso de Uso Principal
+## Main Use Case
 
 ### StartPayment
 
-Responsável por iniciar uma nova transação de pagamento.
+Responsible for starting a new payment transaction.
 
-Entrada esperada:
+Expected input:
 
 - customer_id
 - merchant_id
 - amount
 - payment_method
 
-Saída esperada:
+Expected output:
 
 - transaction_id
 - status
 - created_at
 
-## Domain Events Consumidos
+## Consumed Domain Events
 
-Este serviço não consome eventos de domínio.
+This service does not consume domain events.
 
-Ele é iniciado por uma chamada HTTP externa.
+It is started by an external HTTP call.
 
-## Domain Events Publicados
+## Published Domain Events
 
 ### PaymentStarted
 
-Publicado quando uma transação de pagamento é criada com sucesso.
+Published when a payment transaction is created successfully.
 
-Payload sugerido:
+Suggested payload:
 
 - transaction_id
 - customer_id
@@ -90,31 +90,31 @@ Payload sugerido:
 - payment_method
 - occurred_at
 
-## Portas
+## Ports
 
 ### TransactionRepository
 
-Responsável por salvar e recuperar transações.
+Responsible for saving and retrieving transactions.
 
 ### EventPublisher
 
-Responsável por publicar eventos de domínio.
+Responsible for publishing domain events.
 
-## Responsabilidades
+## Responsibilities
 
-Este serviço deve:
+This service must:
 
-- Receber uma solicitação de início de pagamento.
-- Criar uma nova transação.
-- Validar os dados iniciais do pagamento.
-- Persistir a transação com status `STARTED`.
-- Publicar o evento `payment.started`.
+- Receive a payment start request.
+- Create a new transaction.
+- Validate the initial payment data.
+- Persist the transaction with `STARTED` status.
+- Publish the `payment.started` event.
 
-Este serviço não deve:
+This service must not:
 
-- Debitar conta.
-- Creditar conta.
-- Confirmar pagamento.
-- Reverter pagamento.
-- Notificar cliente ou lojista.
-- Emitir comprovante.
+- Debit accounts.
+- Credit accounts.
+- Confirm payments.
+- Reverse payments.
+- Notify customers or merchants.
+- Issue receipts.

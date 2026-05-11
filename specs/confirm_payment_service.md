@@ -1,58 +1,58 @@
 # Confirm Payment Service
 
-## Descrição de Negócio
+## Business Description
 
-O `confirm_payment_service` é responsável por confirmar uma transação de pagamento após o crédito na conta do recebedor ser realizado com sucesso.
+The `confirm_payment_service` is responsible for confirming a payment transaction after the recipient account has been credited successfully.
 
-Este serviço pertence ao contexto de Pagamento e representa a etapa em que o pagamento deixa de ser apenas iniciado e passa a ser considerado confirmado.
+This service belongs to the Payment context and represents the step where the payment stops being only started and becomes confirmed.
 
-Ele consome o evento `credit.completed`, valida se a transação pode ser confirmada, altera o status para `CONFIRMED` e publica o evento `payment.confirmed`.
+It consumes the `credit.completed` event, validates whether the transaction can be confirmed, changes the status to `CONFIRMED`, and publishes the `payment.confirmed` event.
 
 ## Bounded Context
 
-Pagamento.
+Payment.
 
 ## Ubiquitous Language
 
-- Payment: pagamento solicitado por um cliente.
-- Transaction: registro principal do pagamento.
-- TransactionId: identificador único da transação.
-- TransactionStatus: estado atual da transação.
-- Confirmation: confirmação de que o pagamento foi concluído.
-- CreditCompleted: evento que informa que o crédito ao recebedor foi realizado com sucesso.
+- Payment: a payment requested by a customer.
+- Transaction: the main payment record.
+- TransactionId: the unique transaction identifier.
+- TransactionStatus: the current transaction state.
+- Confirmation: confirmation that the payment was completed.
+- CreditCompleted: event that reports that the recipient credit was completed successfully.
 
 ## Aggregate Root
 
 ### Transaction
 
-A `Transaction` é o Aggregate Root do contexto de Pagamento.
+The `Transaction` is the Aggregate Root of the Payment context.
 
-Ela controla o ciclo de vida do pagamento e garante que uma transação só seja confirmada em estado válido.
+It controls the payment lifecycle and ensures that a transaction is only confirmed in a valid state.
 
-## Estados da Transação
+## Transaction States
 
 - STARTED
 - CONFIRMED
 - REVERSED
 - FAILED
 
-## Invariantes
+## Invariants
 
-- Uma transação só pode ser confirmada se estiver com status `STARTED`.
-- Uma transação já confirmada não pode ser confirmada novamente.
-- Uma transação revertida não pode ser confirmada.
-- Uma transação falhada não pode ser confirmada.
-- A confirmação deve estar associada a um `transaction_id`.
-- A confirmação só pode ocorrer após o crédito ao recebedor ser realizado com sucesso.
-- A confirmação deve ser idempotente por `transaction_id`.
+- A transaction can only be confirmed if it has `STARTED` status.
+- An already confirmed transaction cannot be confirmed again.
+- A reversed transaction cannot be confirmed.
+- A failed transaction cannot be confirmed.
+- The confirmation must be associated with a `transaction_id`.
+- The confirmation can only occur after the recipient credit is completed successfully.
+- The confirmation must be idempotent by `transaction_id`.
 
-## Caso de Uso Principal
+## Main Use Case
 
 ### ConfirmPayment
 
-Responsável por confirmar uma transação após o crédito ser concluído.
+Responsible for confirming a transaction after the credit is completed.
 
-Entrada esperada:
+Expected input:
 
 - transaction_id
 - customer_id
@@ -61,19 +61,19 @@ Entrada esperada:
 - amount
 - credited_at
 
-Saída esperada:
+Expected output:
 
 - transaction_id
 - status
 - confirmed_at
 
-## Domain Events Consumidos
+## Consumed Domain Events
 
 ### CreditCompleted
 
-Consumido quando o crédito na conta do recebedor foi realizado com sucesso.
+Consumed when the recipient account credit was completed successfully.
 
-Payload esperado:
+Expected payload:
 
 - transaction_id
 - customer_id
@@ -82,13 +82,13 @@ Payload esperado:
 - amount
 - credited_at
 
-## Domain Events Publicados
+## Published Domain Events
 
 ### PaymentConfirmed
 
-Publicado quando o pagamento é confirmado com sucesso.
+Published when the payment is confirmed successfully.
 
-Payload sugerido:
+Suggested payload:
 
 - transaction_id
 - customer_id
@@ -96,32 +96,32 @@ Payload sugerido:
 - amount
 - confirmed_at
 
-## Portas
+## Ports
 
 ### TransactionRepository
 
-Responsável por recuperar e salvar transações.
+Responsible for retrieving and saving transactions.
 
 ### EventPublisher
 
-Responsável por publicar eventos de domínio.
+Responsible for publishing domain events.
 
-## Responsabilidades
+## Responsibilities
 
-Este serviço deve:
+This service must:
 
-- Consumir o evento `credit.completed`.
-- Buscar a transação pelo `transaction_id`.
-- Validar se a transação pode ser confirmada.
-- Alterar o status da transação para `CONFIRMED`.
-- Persistir a alteração.
-- Publicar o evento `payment.confirmed`.
+- Consume the `credit.completed` event.
+- Find the transaction by `transaction_id`.
+- Validate whether the transaction can be confirmed.
+- Change the transaction status to `CONFIRMED`.
+- Persist the change.
+- Publish the `payment.confirmed` event.
 
-Este serviço não deve:
+This service must not:
 
-- Criar transações.
-- Debitar conta.
-- Creditar conta.
-- Reverter pagamento.
-- Notificar cliente ou lojista.
-- Emitir comprovante.
+- Create transactions.
+- Debit accounts.
+- Credit accounts.
+- Reverse payments.
+- Notify customers or merchants.
+- Issue receipts.

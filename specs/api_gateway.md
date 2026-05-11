@@ -1,95 +1,95 @@
 # API Gateway
 
-## Descrição de Negócio
+## Business Description
 
-O `api_gateway` é responsável por expor uma entrada única para os clientes externos acessarem os serviços da plataforma.
+The `api_gateway` is responsible for exposing a single entry point for external clients to access the platform services.
 
-Este componente não pertence a um Bounded Context específico. Ele atua como camada de entrada da aplicação, roteando requisições HTTP para os serviços internos corretos.
+This component does not belong to a specific Bounded Context. It acts as the application's entry layer, routing HTTP requests to the correct internal services.
 
-Ele centraliza o acesso externo, simplifica a comunicação com os clientes e protege os serviços internos de exposição direta.
+It centralizes external access, simplifies client communication, and protects internal services from direct exposure.
 
 ## Bounded Context
 
-Não possui Bounded Context próprio.
+It does not have its own Bounded Context.
 
-O `api_gateway` é um componente de infraestrutura/aplicação que conecta clientes externos aos Bounded Contexts internos.
+The `api_gateway` is an infrastructure/application component that connects external clients to the internal Bounded Contexts.
 
 ## Ubiquitous Language
 
-- API Gateway: ponto único de entrada da aplicação.
-- Route: caminho HTTP exposto para o cliente.
-- Upstream Service: serviço interno que recebe a requisição.
-- Request: solicitação feita pelo cliente.
-- Response: resposta retornada ao cliente.
-- CorrelationId: identificador usado para rastrear uma requisição entre serviços.
-- Authentication: validação de identidade do cliente.
-- Authorization: validação de permissão de acesso.
+- API Gateway: the application's single entry point.
+- Route: HTTP path exposed to the client.
+- Upstream Service: internal service that receives the request.
+- Request: request made by the client.
+- Response: response returned to the client.
+- CorrelationId: identifier used to trace a request across services.
+- Authentication: validation of the client's identity.
+- Authorization: validation of access permission.
 
-## Responsabilidade Principal
+## Main Responsibility
 
-O `api_gateway` deve receber requisições externas e encaminhá-las para o serviço interno responsável.
+The `api_gateway` must receive external requests and forward them to the responsible internal service.
 
-Exemplos:
+Examples:
 
-- `/api/v1/accounts` encaminha para `account_service`
-- `/api/v1/payments/start` encaminha para `start_payment_service`
+- `/api/v1/accounts` forwards to `account_service`
+- `/api/v1/payments/start` forwards to `start_payment_service`
 
-## Casos de Uso Principais
+## Main Use Cases
 
 ### RouteAccountRequests
 
-Responsável por encaminhar requisições de conta para o `account_service`.
+Responsible for forwarding account requests to the `account_service`.
 
 ### RoutePaymentRequests
 
-Responsável por encaminhar requisições de pagamento para o `start_payment_service`.
+Responsible for forwarding payment requests to the `start_payment_service`.
 
-## Regras
+## Rules
 
-- O gateway deve expor uma API pública simples e consistente.
-- O gateway deve esconder os endereços internos dos serviços.
-- O gateway deve encaminhar headers relevantes, como `correlation_id`.
-- O gateway deve retornar respostas padronizadas para o cliente.
-- O gateway não deve conter regra de negócio de domínio.
-- O gateway não deve acessar diretamente bancos de dados dos serviços.
-- O gateway não deve publicar eventos de domínio.
-- O gateway não deve executar lógica de pagamento, conta, notificação ou comprovante.
+- The gateway must expose a simple and consistent public API.
+- The gateway must hide the internal service addresses.
+- The gateway must forward relevant headers, such as `correlation_id`.
+- The gateway must return standardized responses to the client.
+- The gateway must not contain domain business rules.
+- The gateway must not directly access service databases.
+- The gateway must not publish domain events.
+- The gateway must not execute payment, account, notification, or receipt logic.
 
-## Portas / Integrações
+## Ports / Integrations
 
 ### HTTP Client
 
-Responsável por chamar os serviços internos.
+Responsible for calling internal services.
 
 ### Request Router
 
-Responsável por mapear rotas externas para serviços internos.
+Responsible for mapping external routes to internal services.
 
 ### Error Handler
 
-Responsável por padronizar respostas de erro.
+Responsible for standardizing error responses.
 
-## Responsabilidades
+## Responsibilities
 
-Este componente deve:
+This component must:
 
-- Expor rotas públicas HTTP.
-- Encaminhar requisições para os serviços internos.
-- Propagar `correlation_id`.
-- Padronizar respostas de erro.
-- Centralizar o ponto de entrada da aplicação.
-- Facilitar autenticação e autorização no futuro.
-- Evitar exposição direta dos serviços internos.
+- Expose public HTTP routes.
+- Forward requests to internal services.
+- Propagate `correlation_id`.
+- Standardize error responses.
+- Centralize the application's entry point.
+- Make future authentication and authorization easier.
+- Avoid direct exposure of internal services.
 
-Este componente não deve:
+This component must not:
 
-- Criar contas diretamente.
-- Iniciar pagamentos diretamente no domínio.
-- Debitar conta.
-- Creditar conta.
-- Confirmar pagamento.
-- Reverter pagamento.
-- Notificar cliente ou merchant.
-- Emitir comprovante.
-- Acessar bancos internos dos serviços.
-- Publicar eventos de domínio.
+- Create accounts directly.
+- Start payments directly in the domain.
+- Debit accounts.
+- Credit accounts.
+- Confirm payments.
+- Reverse payments.
+- Notify customers or merchants.
+- Issue receipts.
+- Access internal service databases.
+- Publish domain events.

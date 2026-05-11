@@ -1,58 +1,58 @@
 # Notify Customer Service
 
-## Descrição de Negócio
+## Business Description
 
-O `notify_customer_service` é responsável por notificar o cliente após uma transação de pagamento ser confirmada.
+The `notify_customer_service` is responsible for notifying the customer after a payment transaction is confirmed.
 
-Este serviço pertence ao contexto de Notificação e representa a etapa de comunicação com o cliente pagador na saga de pagamento.
+This service belongs to the Notification context and represents the communication step with the paying customer in the payment saga.
 
-Ele consome o evento `payment.confirmed`, cria uma notificação para o cliente, tenta realizar a entrega pelo canal configurado e publica o evento `customer.notified`.
+It consumes the `payment.confirmed` event, creates a notification for the customer, attempts delivery through the configured channel, and publishes the `customer.notified` event.
 
 ## Bounded Context
 
-Notificação.
+Notification.
 
 ## Ubiquitous Language
 
-- Notification: mensagem enviada para um destinatário.
-- NotificationId: identificador único da notificação.
-- Customer: cliente pagador.
-- Recipient: destinatário da notificação.
-- Channel: canal de entrega da notificação.
-- DeliveryStatus: estado atual da entrega.
-- PaymentConfirmed: evento que informa que o pagamento foi confirmado.
+- Notification: message sent to a recipient.
+- NotificationId: the unique notification identifier.
+- Customer: the paying customer.
+- Recipient: the notification recipient.
+- Channel: the notification delivery channel.
+- DeliveryStatus: the current delivery state.
+- PaymentConfirmed: event that reports that the payment was confirmed.
 
 ## Aggregate Root
 
 ### Notification
 
-A `Notification` é o Aggregate Root do contexto de Notificação.
+The `Notification` is the Aggregate Root of the Notification context.
 
-Ela controla o ciclo de vida da notificação e garante que a entrega seja registrada corretamente.
+It controls the notification lifecycle and ensures that delivery is recorded correctly.
 
-## Estados da Notificação
+## Notification States
 
 - PENDING
 - DELIVERED
 - FAILED
 
-## Invariantes
+## Invariants
 
-- O cliente só pode ser notificado após o pagamento ser confirmado.
-- Uma notificação deve possuir um destinatário válido.
-- Uma notificação deve possuir um canal válido.
-- Uma notificação deve estar associada a um `transaction_id`.
-- O mesmo cliente não deve receber notificações duplicadas para a mesma transação.
-- A operação deve ser idempotente por `transaction_id` e `customer_id`.
-- Falha na notificação não deve reverter ou cancelar o pagamento.
+- The customer can only be notified after the payment is confirmed.
+- A notification must have a valid recipient.
+- A notification must have a valid channel.
+- A notification must be associated with a `transaction_id`.
+- The same customer must not receive duplicate notifications for the same transaction.
+- The operation must be idempotent by `transaction_id` and `customer_id`.
+- Notification failure must not reverse or cancel the payment.
 
-## Caso de Uso Principal
+## Main Use Case
 
 ### NotifyCustomer
 
-Responsável por notificar o cliente após o pagamento ser confirmado.
+Responsible for notifying the customer after the payment is confirmed.
 
-Entrada esperada:
+Expected input:
 
 - transaction_id
 - customer_id
@@ -60,7 +60,7 @@ Entrada esperada:
 - amount
 - confirmed_at
 
-Saída esperada:
+Expected output:
 
 - notification_id
 - transaction_id
@@ -68,13 +68,13 @@ Saída esperada:
 - status
 - notified_at
 
-## Domain Events Consumidos
+## Consumed Domain Events
 
 ### PaymentConfirmed
 
-Consumido quando a transação de pagamento é confirmada.
+Consumed when the payment transaction is confirmed.
 
-Payload esperado:
+Expected payload:
 
 - transaction_id
 - customer_id
@@ -82,13 +82,13 @@ Payload esperado:
 - amount
 - confirmed_at
 
-## Domain Events Publicados
+## Published Domain Events
 
 ### CustomerNotified
 
-Publicado quando a notificação do cliente é processada com sucesso.
+Published when the customer notification is processed successfully.
 
-Payload sugerido:
+Suggested payload:
 
 - notification_id
 - transaction_id
@@ -98,38 +98,38 @@ Payload sugerido:
 - status
 - notified_at
 
-## Portas
+## Ports
 
 ### NotificationRepository
 
-Responsável por salvar e recuperar notificações.
+Responsible for saving and retrieving notifications.
 
 ### NotificationGateway
 
-Responsável por entregar a notificação por um canal externo.
+Responsible for delivering the notification through an external channel.
 
 ### EventPublisher
 
-Responsável por publicar eventos de domínio.
+Responsible for publishing domain events.
 
-## Responsabilidades
+## Responsibilities
 
-Este serviço deve:
+This service must:
 
-- Consumir o evento `payment.confirmed`.
-- Criar uma notificação para o cliente.
-- Validar o destinatário.
-- Validar o canal de entrega.
-- Tentar entregar a notificação.
-- Persistir o resultado da notificação.
-- Publicar o evento `customer.notified`.
+- Consume the `payment.confirmed` event.
+- Create a notification for the customer.
+- Validate the recipient.
+- Validate the delivery channel.
+- Attempt to deliver the notification.
+- Persist the notification result.
+- Publish the `customer.notified` event.
 
-Este serviço não deve:
+This service must not:
 
-- Criar transações.
-- Debitar conta.
-- Creditar conta.
-- Confirmar pagamento.
-- Reverter pagamento.
-- Notificar merchant.
-- Emitir comprovante.
+- Create transactions.
+- Debit accounts.
+- Credit accounts.
+- Confirm payments.
+- Reverse payments.
+- Notify merchants.
+- Issue receipts.

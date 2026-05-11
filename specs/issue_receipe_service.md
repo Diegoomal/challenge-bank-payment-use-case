@@ -1,56 +1,56 @@
 # Issue Receipt Service
 
-## Descrição de Negócio
+## Business Description
 
-O `issue_receipt_service` é responsável por emitir o comprovante após uma transação de pagamento ser confirmada.
+The `issue_receipt_service` is responsible for issuing the receipt after a payment transaction is confirmed.
 
-Este serviço pertence ao contexto de Comprovante e representa a etapa de geração do documento da saga de pagamento.
+This service belongs to the Receipt context and represents the document generation step of the payment saga.
 
-Ele consome o evento `payment.confirmed`, cria um comprovante com um snapshot dos dados da transação confirmada, persiste o comprovante e publica o evento `receipt.issued`.
+It consumes the `payment.confirmed` event, creates a receipt with a snapshot of the confirmed transaction data, persists the receipt, and publishes the `receipt.issued` event.
 
 ## Bounded Context
 
-Comprovante.
+Receipt.
 
 ## Ubiquitous Language
 
-- Receipt: documento que comprova um pagamento confirmado.
-- ReceiptId: identificador único do comprovante.
-- TransactionData: snapshot dos dados da transação confirmada.
-- IssuingStatus: estado atual da emissão do comprovante.
-- PaymentConfirmed: evento que informa que o pagamento foi confirmado.
+- Receipt: document that proves a confirmed payment.
+- ReceiptId: the unique receipt identifier.
+- TransactionData: snapshot of the confirmed transaction data.
+- IssuingStatus: the current receipt issuing state.
+- PaymentConfirmed: event that reports that the payment was confirmed.
 
 ## Aggregate Root
 
 ### Receipt
 
-O `Receipt` é o Aggregate Root do contexto de Comprovante.
+The `Receipt` is the Aggregate Root of the Receipt context.
 
-Ele controla o ciclo de vida da emissão e garante que apenas um comprovante válido seja emitido para cada transação.
+It controls the issuing lifecycle and ensures that only one valid receipt is issued for each transaction.
 
-## Estados do Comprovante
+## Receipt States
 
 - PENDING
 - ISSUED
 - FAILED
 
-## Invariantes
+## Invariants
 
-- Um comprovante só pode ser emitido após o pagamento ser confirmado.
-- Um comprovante deve estar associado a um `transaction_id`.
-- Uma transação deve possuir no máximo um comprovante válido.
-- O comprovante deve conter um snapshot dos dados da transação.
-- O comprovante não deve depender diretamente da entidade `Transaction` de outro serviço.
-- A emissão deve ser idempotente por `transaction_id`.
-- Se já existir comprovante para a transação, o serviço deve retornar o existente ou ignorar o evento duplicado.
+- A receipt can only be issued after the payment is confirmed.
+- A receipt must be associated with a `transaction_id`.
+- A transaction must have at most one valid receipt.
+- The receipt must contain a snapshot of the transaction data.
+- The receipt must not directly depend on the `Transaction` entity from another service.
+- Issuing must be idempotent by `transaction_id`.
+- If a receipt already exists for the transaction, the service must return the existing one or ignore the duplicate event.
 
-## Caso de Uso Principal
+## Main Use Case
 
 ### IssueReceipt
 
-Responsável por emitir o comprovante após o pagamento ser confirmado.
+Responsible for issuing the receipt after the payment is confirmed.
 
-Entrada esperada:
+Expected input:
 
 - transaction_id
 - customer_id
@@ -58,20 +58,20 @@ Entrada esperada:
 - amount
 - confirmed_at
 
-Saída esperada:
+Expected output:
 
 - receipt_id
 - transaction_id
 - status
 - issued_at
 
-## Domain Events Consumidos
+## Consumed Domain Events
 
 ### PaymentConfirmed
 
-Consumido quando a transação de pagamento é confirmada.
+Consumed when the payment transaction is confirmed.
 
-Payload esperado:
+Expected payload:
 
 - transaction_id
 - customer_id
@@ -79,13 +79,13 @@ Payload esperado:
 - amount
 - confirmed_at
 
-## Domain Events Publicados
+## Published Domain Events
 
 ### ReceiptIssued
 
-Publicado quando o comprovante é emitido com sucesso.
+Published when the receipt is issued successfully.
 
-Payload sugerido:
+Suggested payload:
 
 - receipt_id
 - transaction_id
@@ -94,36 +94,36 @@ Payload sugerido:
 - amount
 - issued_at
 
-## Portas
+## Ports
 
 ### ReceiptRepository
 
-Responsável por salvar e recuperar comprovantes.
+Responsible for saving and retrieving receipts.
 
 ### ReceiptGenerator
 
-Responsável por gerar os dados ou documento do comprovante.
+Responsible for generating the receipt data or document.
 
 ### EventPublisher
 
-Responsável por publicar eventos de domínio.
+Responsible for publishing domain events.
 
-## Responsabilidades
+## Responsibilities
 
-Este serviço deve:
+This service must:
 
-- Consumir o evento `payment.confirmed`.
-- Criar um comprovante para a transação confirmada.
-- Armazenar um snapshot dos dados da transação.
-- Garantir idempotência por `transaction_id`.
-- Persistir o comprovante.
-- Publicar o evento `receipt.issued`.
+- Consume the `payment.confirmed` event.
+- Create a receipt for the confirmed transaction.
+- Store a snapshot of the transaction data.
+- Ensure idempotency by `transaction_id`.
+- Persist the receipt.
+- Publish the `receipt.issued` event.
 
-Este serviço não deve:
+This service must not:
 
-- Criar transações.
-- Debitar conta.
-- Creditar conta.
-- Confirmar pagamento.
-- Reverter pagamento.
-- Notificar cliente ou merchant.
+- Create transactions.
+- Debit accounts.
+- Credit accounts.
+- Confirm payments.
+- Reverse payments.
+- Notify customers or merchants.

@@ -1,60 +1,60 @@
 # Reverse Payment Service
 
-## Descrição de Negócio
+## Business Description
 
-O `reverse_payment_service` é responsável por reverter uma transação de pagamento quando alguma etapa financeira da saga falhar.
+The `reverse_payment_service` is responsible for reversing a payment transaction when any financial step of the saga fails.
 
-Este serviço pertence ao contexto de Pagamento e representa a etapa de compensação da saga.
+This service belongs to the Payment context and represents the saga compensation step.
 
-Ele consome os eventos `debit.failed` ou `credit.failed`, valida se a transação pode ser revertida, altera o status para `REVERSED` e publica o evento `payment.reversed`.
+It consumes the `debit.failed` or `credit.failed` events, validates whether the transaction can be reversed, changes the status to `REVERSED`, and publishes the `payment.reversed` event.
 
 ## Bounded Context
 
-Pagamento.
+Payment.
 
 ## Ubiquitous Language
 
-- Payment: pagamento solicitado por um cliente.
-- Transaction: registro principal do pagamento.
-- TransactionId: identificador único da transação.
-- TransactionStatus: estado atual da transação.
-- Reversal: ação de compensação aplicada quando o pagamento não pode ser concluído.
-- ReversalReason: motivo da reversão.
-- DebitFailed: evento que informa que o débito falhou.
-- CreditFailed: evento que informa que o crédito falhou.
+- Payment: a payment requested by a customer.
+- Transaction: the main payment record.
+- TransactionId: the unique transaction identifier.
+- TransactionStatus: the current transaction state.
+- Reversal: compensation action applied when the payment cannot be completed.
+- ReversalReason: the reversal reason.
+- DebitFailed: event that reports that the debit failed.
+- CreditFailed: event that reports that the credit failed.
 
 ## Aggregate Root
 
 ### Transaction
 
-A `Transaction` é o Aggregate Root do contexto de Pagamento.
+The `Transaction` is the Aggregate Root of the Payment context.
 
-Ela controla o ciclo de vida do pagamento e garante que uma transação só seja revertida em estado válido.
+It controls the payment lifecycle and ensures that a transaction is only reversed in a valid state.
 
-## Estados da Transação
+## Transaction States
 
 - STARTED
 - CONFIRMED
 - REVERSED
 - FAILED
 
-## Invariantes
+## Invariants
 
-- Uma transação só pode ser revertida se estiver com status `STARTED` ou `PROCESSING`.
-- Uma transação já confirmada não deve ser revertida por falha de débito ou crédito.
-- Uma transação já revertida não deve ser revertida novamente.
-- Uma transação falhada não deve ser confirmada.
-- A reversão deve estar associada a um `transaction_id`.
-- A reversão deve registrar o motivo da falha.
-- A reversão deve ser idempotente por `transaction_id`.
+- A transaction can only be reversed if it has `STARTED` or `PROCESSING` status.
+- An already confirmed transaction must not be reversed because of a debit or credit failure.
+- An already reversed transaction must not be reversed again.
+- A failed transaction must not be confirmed.
+- The reversal must be associated with a `transaction_id`.
+- The reversal must record the failure reason.
+- The reversal must be idempotent by `transaction_id`.
 
-## Caso de Uso Principal
+## Main Use Case
 
 ### ReversePayment
 
-Responsável por reverter uma transação após falha no débito ou no crédito.
+Responsible for reversing a transaction after a debit or credit failure.
 
-Entrada esperada:
+Expected input:
 
 - transaction_id
 - customer_id
@@ -63,20 +63,20 @@ Entrada esperada:
 - reason
 - occurred_at
 
-Saída esperada:
+Expected output:
 
 - transaction_id
 - status
 - reversal_reason
 - reversed_at
 
-## Domain Events Consumidos
+## Consumed Domain Events
 
 ### DebitFailed
 
-Consumido quando o débito da conta do cliente falha.
+Consumed when the customer's account debit fails.
 
-Payload esperado:
+Expected payload:
 
 - transaction_id
 - customer_id
@@ -87,9 +87,9 @@ Payload esperado:
 
 ### CreditFailed
 
-Consumido quando o crédito na conta do recebedor falha.
+Consumed when the recipient account credit fails.
 
-Payload esperado:
+Expected payload:
 
 - transaction_id
 - customer_id
@@ -98,13 +98,13 @@ Payload esperado:
 - reason
 - failed_at
 
-## Domain Events Publicados
+## Published Domain Events
 
 ### PaymentReversed
 
-Publicado quando a transação de pagamento é revertida com sucesso.
+Published when the payment transaction is reversed successfully.
 
-Payload sugerido:
+Suggested payload:
 
 - transaction_id
 - customer_id
@@ -113,33 +113,33 @@ Payload sugerido:
 - reason
 - reversed_at
 
-## Portas
+## Ports
 
 ### TransactionRepository
 
-Responsável por recuperar e salvar transações.
+Responsible for retrieving and saving transactions.
 
 ### EventPublisher
 
-Responsável por publicar eventos de domínio.
+Responsible for publishing domain events.
 
-## Responsabilidades
+## Responsibilities
 
-Este serviço deve:
+This service must:
 
-- Consumir os eventos `debit.failed` e `credit.failed`.
-- Buscar a transação pelo `transaction_id`.
-- Validar se a transação pode ser revertida.
-- Alterar o status da transação para `REVERSED`.
-- Registrar o motivo da reversão.
-- Persistir a alteração.
-- Publicar o evento `payment.reversed`.
+- Consume the `debit.failed` and `credit.failed` events.
+- Find the transaction by `transaction_id`.
+- Validate whether the transaction can be reversed.
+- Change the transaction status to `REVERSED`.
+- Record the reversal reason.
+- Persist the change.
+- Publish the `payment.reversed` event.
 
-Este serviço não deve:
+This service must not:
 
-- Criar transações.
-- Debitar conta.
-- Creditar conta.
-- Confirmar pagamento.
-- Notificar cliente ou lojista.
-- Emitir comprovante.
+- Create transactions.
+- Debit accounts.
+- Credit accounts.
+- Confirm payments.
+- Notify customers or merchants.
+- Issue receipts.

@@ -1,84 +1,84 @@
 # Account Service
 
-## Descrição de Negócio
+## Business Description
 
-O `account_service` é responsável por criar contas financeiras para clientes.
+The `account_service` is responsible for creating financial accounts for customers.
 
-Este serviço pertence ao contexto de Conta e representa a entrada administrativa para abertura de contas que poderão participar do fluxo de pagamento.
+This service belongs to the Account context and represents the administrative entry point for opening accounts that can participate in the payment flow.
 
-Ele recebe uma solicitação HTTP, cria uma nova `Account` com status `ACTIVE`, persiste a conta e publica o evento `account.created`.
+It receives an HTTP request, creates a new `Account` with `ACTIVE` status, persists the account, and publishes the `account.created` event.
 
 ## Bounded Context
 
-Conta.
+Account.
 
 ## Ubiquitous Language
 
-- Account: conta financeira de um cliente.
-- AccountId: identificador único da conta.
-- Customer: cliente dono da conta.
-- AccountHolder: titular da conta.
-- Balance: saldo disponível da conta.
-- AccountStatus: estado atual da conta.
-- InitialDeposit: valor inicial depositado na conta.
-- AccountCreated: evento que informa que uma conta foi criada.
+- Account: a customer's financial account.
+- AccountId: the unique account identifier.
+- Customer: the customer who owns the account.
+- AccountHolder: the account holder.
+- Balance: the available account balance.
+- AccountStatus: the current account state.
+- InitialDeposit: the initial amount deposited into the account.
+- AccountCreated: event that reports that an account was created.
 
 ## Aggregate Root
 
 ### Account
 
-A `Account` é o Aggregate Root do contexto de Conta.
+The `Account` is the Aggregate Root of the Account context.
 
-Ela controla os dados principais da conta e garante que uma conta seja criada em estado válido.
+It controls the account's core data and ensures that an account is created in a valid state.
 
-## Estados da Conta
+## Account States
 
 - ACTIVE
 - INACTIVE
 - CLOSED
 
-## Invariantes
+## Invariants
 
-- Uma conta deve possuir um `account_id` único.
-- Uma conta deve possuir um `customer_id`.
-- Uma conta deve possuir um titular válido.
-- Uma conta recém-criada deve iniciar com status `ACTIVE`.
-- O depósito inicial não pode ser negativo.
-- Um cliente não deve possuir mais de uma conta ativa.
-- Uma conta não deve iniciar com saldo negativo.
+- An account must have a unique `account_id`.
+- An account must have a `customer_id`.
+- An account must have a valid account holder.
+- A newly created account must start with `ACTIVE` status.
+- The initial deposit cannot be negative.
+- A customer must not have more than one active account.
+- An account must not start with a negative balance.
 
-## Caso de Uso Principal
+## Main Use Case
 
 ### CreateAccount
 
-Responsável por criar uma nova conta financeira para um cliente.
+Responsible for creating a new financial account for a customer.
 
-Entrada esperada:
+Expected input:
 
 - customer_id
 - account_holder
 - initial_deposit
 
-Saída esperada:
+Expected output:
 
 - account_id
 - customer_id
 - status
 - created_at
 
-## Domain Events Consumidos
+## Consumed Domain Events
 
-Este serviço não consome eventos de domínio.
+This service does not consume domain events.
 
-Ele é iniciado por uma chamada HTTP externa.
+It is started by an external HTTP call.
 
-## Domain Events Publicados
+## Published Domain Events
 
 ### AccountCreated
 
-Publicado quando uma conta é criada com sucesso.
+Published when an account is created successfully.
 
-Payload sugerido:
+Suggested payload:
 
 - account_id
 - customer_id
@@ -87,33 +87,33 @@ Payload sugerido:
 - status
 - created_at
 
-## Portas
+## Ports
 
 ### AccountRepository
 
-Responsável por salvar e recuperar contas.
+Responsible for saving and retrieving accounts.
 
 ### EventPublisher
 
-Responsável por publicar eventos de domínio.
+Responsible for publishing domain events.
 
-## Responsabilidades
+## Responsibilities
 
-Este serviço deve:
+This service must:
 
-- Receber uma solicitação de criação de conta.
-- Validar os dados da conta.
-- Verificar se o cliente já possui conta ativa.
-- Criar uma nova conta com status `ACTIVE`.
-- Persistir a conta.
-- Publicar o evento `account.created`.
+- Receive an account creation request.
+- Validate the account data.
+- Check whether the customer already has an active account.
+- Create a new account with `ACTIVE` status.
+- Persist the account.
+- Publish the `account.created` event.
 
-Este serviço não deve:
+This service must not:
 
-- Iniciar pagamento.
-- Debitar conta.
-- Creditar conta.
-- Confirmar pagamento.
-- Reverter pagamento.
-- Notificar cliente ou merchant.
-- Emitir comprovante.
+- Start payments.
+- Debit accounts.
+- Credit accounts.
+- Confirm payments.
+- Reverse payments.
+- Notify customers or merchants.
+- Issue receipts.
