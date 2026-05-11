@@ -17,6 +17,7 @@ def create_payment_router(reverse_payment: ForReversingPayment) -> APIRouter:
                 ReversePaymentCommand(
                     transaction_id=request.transaction_id,
                     customer_id=request.customer_id,
+                    merchant_id=request.merchant_id,
                     amount=request.amount,
                     reason=request.reason,
                     occurred_at=request.occurred_at,

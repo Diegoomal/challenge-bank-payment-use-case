@@ -23,6 +23,7 @@ def test_rabbitmq_event_publisher_publishes_customer_notified():
                 notification_id="notification-1",
                 transaction_id="transaction-1",
                 customer_id="customer-1",
+                notification_type="PAYMENT_CONFIRMED",
                 amount=Decimal("10.00"),
                 channel="PUSH",
                 status="DELIVERED",
@@ -50,5 +51,26 @@ def test_rabbitmq_saga_consumer_parses_payment_confirmed_payload():
 
     assert message.transaction_id == "transaction-1"
     assert message.merchant_id == "merchant-1"
+    assert message.amount == Decimal("10.00")
+    assert message.channel == NotificationChannel.PUSH
+
+
+def test_rabbitmq_saga_consumer_parses_payment_reversed_payload():
+    payload = {
+        "transaction_id": "transaction-1",
+        "customer_id": "customer-1",
+        "merchant_id": "merchant-1",
+        "amount": "10.00",
+        "reason": "INSUFFICIENT_BALANCE",
+        "reversed_at": datetime.now(timezone.utc).isoformat(),
+        "recipient": "customer@example.com",
+        "channel": "PUSH",
+    }
+
+    message = RabbitMQSagaConsumer._payment_reversed_from_payload(payload)
+
+    assert message.transaction_id == "transaction-1"
+    assert message.merchant_id == "merchant-1"
+    assert message.reason == "INSUFFICIENT_BALANCE"
     assert message.amount == Decimal("10.00")
     assert message.channel == NotificationChannel.PUSH

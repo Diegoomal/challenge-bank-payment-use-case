@@ -9,6 +9,7 @@ from domain.transaction_status import TransactionStatus
 class ReversePaymentCommand:
     transaction_id: str
     customer_id: str
+    merchant_id: str | None
     amount: Decimal
     reason: str
     occurred_at: datetime

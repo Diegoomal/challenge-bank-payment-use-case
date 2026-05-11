@@ -21,6 +21,7 @@ def test_rabbitmq_event_publisher_publishes_payment_reversed():
             PaymentReversed(
                 transaction_id="transaction-1",
                 customer_id="customer-1",
+                merchant_id="merchant-1",
                 amount=Decimal("10.00"),
                 reason="INSUFFICIENT_BALANCE",
                 reversed_at=datetime.now(timezone.utc),

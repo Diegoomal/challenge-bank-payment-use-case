@@ -4,6 +4,7 @@ from decimal import Decimal
 from adapters.messaging.in_memory_event_publisher import InMemoryEventPublisher
 from adapters.messaging.saga_event_handler import (
     PaymentConfirmedMessage,
+    PaymentReversedMessage,
     SagaEventHandler,
 )
 from adapters.notification.in_memory_notification_gateway import (
@@ -11,6 +12,7 @@ from adapters.notification.in_memory_notification_gateway import (
 )
 from application.services.notify_customer_service import NotifyCustomerService
 from domain.delivery_status import DeliveryStatus
+from domain.notification_type import NotificationType
 
 
 class InMemoryNotificationRepository:
@@ -23,13 +25,22 @@ class InMemoryNotificationRepository:
     def get_by_id(self, notification_id):
         return self.notifications.get(notification_id)
 
-    def get_by_transaction_and_customer(self, transaction_id, customer_id):
+    def get_by_transaction_and_customer(
+        self,
+        transaction_id,
+        customer_id,
+        notification_type=None,
+    ):
         return next(
             (
                 notification
                 for notification in self.notifications.values()
                 if notification.transaction_id == transaction_id
                 and notification.customer_id == customer_id
+                and (
+                    notification_type is None
+                    or notification.notification_type == notification_type
+                )
             ),
             None,
         )
@@ -56,4 +67,31 @@ def test_saga_handler_notifies_customer_when_payment_is_confirmed():
     )
 
     assert result.status == DeliveryStatus.DELIVERED
+    assert len(publisher.customer_notified_events) == 1
+    assert result.notification_type == NotificationType.PAYMENT_CONFIRMED
+
+
+def test_saga_handler_notifies_customer_when_payment_is_reversed():
+    repository = InMemoryNotificationRepository()
+    publisher = InMemoryEventPublisher()
+    service = NotifyCustomerService(
+        repository,
+        InMemoryNotificationGateway(),
+        publisher,
+    )
+    handler = SagaEventHandler(service)
+
+    result = handler.handle_payment_reversed(
+        PaymentReversedMessage(
+            transaction_id="transaction-1",
+            customer_id="customer-1",
+            merchant_id="merchant-1",
+            amount=Decimal("50.00"),
+            reason="INSUFFICIENT_BALANCE",
+            reversed_at=datetime.now(timezone.utc),
+        )
+    )
+
+    assert result.status == DeliveryStatus.DELIVERED
+    assert result.notification_type == NotificationType.PAYMENT_REVERSED
     assert len(publisher.customer_notified_events) == 1

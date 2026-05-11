@@ -21,6 +21,7 @@ def test_reverse_payment_endpoint_reverses_transaction(tmp_path):
         json={
             "transaction_id": "transaction-1",
             "customer_id": "customer-1",
+            "merchant_id": "merchant-1",
             "amount": "50.00",
             "reason": "INSUFFICIENT_BALANCE",
             "occurred_at": datetime.now(timezone.utc).isoformat(),

@@ -24,7 +24,7 @@ docker compose exec -T debit_account_service python -c "import sqlite3; c=sqlite
 docker compose exec -T confirm_payment_service python -c "import sqlite3; c=sqlite3.connect('/data/confirm_payment.db'); print(c.execute('select id, customer_id, merchant_id, status, confirmed_at from transactions where customer_id=? order by updated_at desc limit 5', ('scenario-07-customer',)).fetchall())"
 docker compose exec -T reverse_payment_service python -c "import sqlite3; c=sqlite3.connect('/data/reverse_payment.db'); print(c.execute('select id, customer_id, merchant_id, status, reversal_reason from transactions where customer_id=? order by updated_at desc limit 5', ('scenario-07-customer',)).fetchall())"
 docker compose exec -T notify_merchant_service python -c "import sqlite3; c=sqlite3.connect('/data/notify_merchant.db'); print(c.execute('select transaction_id, merchant_id, status from notifications where merchant_id=? order by notified_at desc limit 5', ('scenario-07-merchant',)).fetchall())"
-docker compose exec -T notify_customer_service python -c "import sqlite3; c=sqlite3.connect('/data/notify_customer.db'); print(c.execute('select transaction_id, customer_id, status from notifications where customer_id=? order by notified_at desc limit 5', ('scenario-07-customer',)).fetchall())"
+docker compose exec -T notify_customer_service python -c "import sqlite3; c=sqlite3.connect('/data/notify_customer.db'); print(c.execute('select transaction_id, customer_id, notification_type, status from notifications where customer_id=? order by notified_at desc limit 5', ('scenario-07-customer',)).fetchall())"
 docker compose exec -T issue_receipt_service python -c "import sqlite3; c=sqlite3.connect('/data/issue_receipt.db'); print(c.execute('select transaction_id, customer_id, merchant_id, status from receipts where customer_id=? order by issued_at desc limit 5', ('scenario-07-customer',)).fetchall())"
 
 Expected behavior:
@@ -33,5 +33,5 @@ Expected behavior:
 - debit_account_service publishes debit.failed with ACCOUNT_NOT_FOUND.
 - reverse_payment_service marks the transaction as REVERSED.
 - confirm_payment_service does not confirm the transaction.
-- Merchant notification, customer notification, and receipt are absent.
-
+- notify_customer_service delivers a PAYMENT_REVERSED customer notification.
+- Merchant success notification and receipt are absent.

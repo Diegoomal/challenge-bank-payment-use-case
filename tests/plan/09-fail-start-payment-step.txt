@@ -1,0 +1,28 @@
+Scenario 09 - failure in start payment step
+
+Goal:
+Validate request validation before the saga starts. No saga event should be
+created when the start payment request is invalid.
+
+Preparation:
+
+docker compose up -d --build
+
+Action:
+
+curl -i -X POST http://localhost:8080/api/v1/payments/start -H "Content-Type: application/json" -d '{"customer_id":"scenario-09-customer","merchant_id":"scenario-09-merchant","amount":"0.00","payment_method":"ACCOUNT_BALANCE"}'
+
+Inspect the result:
+
+docker compose exec -T start_payment_service python -c "import sqlite3; c=sqlite3.connect('/data/start_payment.db'); print(c.execute('select id, customer_id, merchant_id, amount, status from transactions where customer_id=? order by created_at desc limit 5', ('scenario-09-customer',)).fetchall()); print(c.execute('select event_name, routing_key, status from outbox_events order by created_at desc limit 5').fetchall())"
+docker compose exec -T debit_account_service python -c "import sqlite3; c=sqlite3.connect('/data/debit_account.db'); print(c.execute('select event_name, routing_key, status from outbox_events order by created_at desc limit 5').fetchall())"
+docker compose exec -T confirm_payment_service python -c "import sqlite3; c=sqlite3.connect('/data/confirm_payment.db'); print(c.execute('select id, customer_id, merchant_id, status from transactions where customer_id=? order by updated_at desc limit 5', ('scenario-09-customer',)).fetchall())"
+docker compose exec -T reverse_payment_service python -c "import sqlite3; c=sqlite3.connect('/data/reverse_payment.db'); print(c.execute('select id, customer_id, merchant_id, status from transactions where customer_id=? order by updated_at desc limit 5', ('scenario-09-customer',)).fetchall())"
+
+Expected behavior:
+
+- HTTP response is an error.
+- No transaction exists for scenario-09-customer in start_payment_service.
+- No payment.started event is created for this request.
+- No debit, confirmation, reversal, notification, or receipt step runs.
+

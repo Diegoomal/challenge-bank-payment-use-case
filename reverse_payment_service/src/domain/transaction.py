@@ -11,15 +11,24 @@ class Transaction:
     status: TransactionStatus
     created_at: datetime
     updated_at: datetime
+    customer_id: str | None = None
+    merchant_id: str | None = None
     reversal_reason: str | None = None
     reversed_at: datetime | None = None
 
     @classmethod
-    def start(cls, transaction_id: str) -> "Transaction":
+    def start(
+        cls,
+        transaction_id: str,
+        customer_id: str | None = None,
+        merchant_id: str | None = None,
+    ) -> "Transaction":
         cls._validate_required("transaction_id", transaction_id)
         now = datetime.now(timezone.utc)
         return cls(
             id=transaction_id,
+            customer_id=customer_id,
+            merchant_id=merchant_id,
             status=TransactionStatus.STARTED,
             created_at=now,
             updated_at=now,

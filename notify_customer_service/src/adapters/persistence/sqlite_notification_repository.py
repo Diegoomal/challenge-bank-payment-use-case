@@ -7,6 +7,7 @@ from application.ports.notification_repository import NotificationRepository
 from domain.delivery_status import DeliveryStatus
 from domain.notification import Notification
 from domain.notification_channel import NotificationChannel
+from domain.notification_type import NotificationType
 
 
 class SQLiteNotificationRepository(NotificationRepository):
@@ -19,10 +20,12 @@ class SQLiteNotificationRepository(NotificationRepository):
             connection.execute(
                 """
                 INSERT INTO notifications (
-                    id, transaction_id, merchant_id, customer_id, amount, recipient,
-                    channel, status, failure_reason, notified_at, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(transaction_id, customer_id) DO UPDATE SET
+                    id, transaction_id, merchant_id, customer_id,
+                    notification_type, amount, recipient, channel, status,
+                    failure_reason, notified_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(transaction_id, customer_id, notification_type)
+                DO UPDATE SET
                     recipient = excluded.recipient,
                     channel = excluded.channel,
                     status = excluded.status,
@@ -35,6 +38,7 @@ class SQLiteNotificationRepository(NotificationRepository):
                     notification.transaction_id,
                     notification.merchant_id,
                     notification.customer_id,
+                    notification.notification_type.value,
                     str(notification.amount),
                     notification.recipient,
                     notification.channel.value,
@@ -63,16 +67,31 @@ class SQLiteNotificationRepository(NotificationRepository):
         self,
         transaction_id: str,
         customer_id: str,
+        notification_type: NotificationType | None = None,
     ) -> Notification | None:
         with self._connect() as connection:
-            row = connection.execute(
-                """
-                SELECT *
-                FROM notifications
-                WHERE transaction_id = ? AND customer_id = ?
-                """,
-                (transaction_id, customer_id),
-            ).fetchone()
+            if notification_type is None:
+                row = connection.execute(
+                    """
+                    SELECT *
+                    FROM notifications
+                    WHERE transaction_id = ? AND customer_id = ?
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """,
+                    (transaction_id, customer_id),
+                ).fetchone()
+            else:
+                row = connection.execute(
+                    """
+                    SELECT *
+                    FROM notifications
+                    WHERE transaction_id = ?
+                      AND customer_id = ?
+                      AND notification_type = ?
+                    """,
+                    (transaction_id, customer_id, notification_type.value),
+                ).fetchone()
         return self._from_row(row)
 
     def get_by_transaction_and_merchant(
@@ -108,6 +127,7 @@ class SQLiteNotificationRepository(NotificationRepository):
                     transaction_id TEXT NOT NULL,
                     merchant_id TEXT NOT NULL,
                     customer_id TEXT NOT NULL,
+                    notification_type TEXT NOT NULL DEFAULT 'PAYMENT_CONFIRMED',
                     amount TEXT NOT NULL,
                     recipient TEXT NOT NULL,
                     channel TEXT NOT NULL,
@@ -116,8 +136,27 @@ class SQLiteNotificationRepository(NotificationRepository):
                     notified_at TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
-                    UNIQUE(transaction_id, customer_id)
+                    UNIQUE(transaction_id, customer_id, notification_type)
                 )
+                """
+            )
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(notifications)")
+            }
+            if "notification_type" not in columns:
+                connection.execute(
+                    """
+                    ALTER TABLE notifications
+                    ADD COLUMN notification_type TEXT NOT NULL
+                    DEFAULT 'PAYMENT_CONFIRMED'
+                    """
+                )
+            connection.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS
+                idx_notifications_transaction_customer_type
+                ON notifications(transaction_id, customer_id, notification_type)
                 """
             )
 
@@ -130,6 +169,7 @@ class SQLiteNotificationRepository(NotificationRepository):
             transaction_id=row["transaction_id"],
             merchant_id=row["merchant_id"],
             customer_id=row["customer_id"],
+            notification_type=NotificationType(row["notification_type"]),
             amount=Decimal(row["amount"]),
             recipient=row["recipient"],
             channel=NotificationChannel(row["channel"]),

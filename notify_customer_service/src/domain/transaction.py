@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from domain.delivery_status import DeliveryStatus
 from domain.notification_channel import NotificationChannel
+from domain.notification_type import NotificationType
 
 
 @dataclass
@@ -14,6 +15,7 @@ class Notification:
     merchant_id: str
     customer_id: str
     amount: Decimal
+    notification_type: NotificationType
     recipient: str
     channel: NotificationChannel
     status: DeliveryStatus
@@ -32,10 +34,53 @@ class Notification:
         recipient: str,
         channel: NotificationChannel,
     ) -> "Notification":
+        return cls.create(
+            transaction_id=transaction_id,
+            merchant_id=merchant_id,
+            customer_id=customer_id,
+            amount=amount,
+            notification_type=NotificationType.PAYMENT_CONFIRMED,
+            recipient=recipient,
+            channel=channel,
+        )
+
+    @classmethod
+    def create_for_payment_reversed(
+        cls,
+        transaction_id: str,
+        merchant_id: str,
+        customer_id: str,
+        amount: Decimal,
+        recipient: str,
+        channel: NotificationChannel,
+    ) -> "Notification":
+        return cls.create(
+            transaction_id=transaction_id,
+            merchant_id=merchant_id,
+            customer_id=customer_id,
+            amount=amount,
+            notification_type=NotificationType.PAYMENT_REVERSED,
+            recipient=recipient,
+            channel=channel,
+        )
+
+    @classmethod
+    def create(
+        cls,
+        transaction_id: str,
+        merchant_id: str,
+        customer_id: str,
+        amount: Decimal,
+        notification_type: NotificationType,
+        recipient: str,
+        channel: NotificationChannel,
+    ) -> "Notification":
         cls._validate_required("transaction_id", transaction_id)
         cls._validate_required("merchant_id", merchant_id)
         cls._validate_required("customer_id", customer_id)
         cls._validate_required("recipient", recipient)
+        if not isinstance(notification_type, NotificationType):
+            raise ValueError("notification_type is invalid")
         if not isinstance(channel, NotificationChannel):
             raise ValueError("channel is invalid")
 
@@ -46,6 +91,7 @@ class Notification:
             merchant_id=merchant_id,
             customer_id=customer_id,
             amount=amount,
+            notification_type=notification_type,
             recipient=recipient,
             channel=channel,
             status=DeliveryStatus.PENDING,

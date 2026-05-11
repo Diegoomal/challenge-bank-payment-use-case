@@ -12,7 +12,9 @@ from adapters.messaging.saga_event_handler import SagaEventHandler
 from adapters.notification.in_memory_notification_gateway import (
     InMemoryNotificationGateway,
 )
-from adapters.persistence.sqlite_notification_repository import SQLiteNotificationRepository
+from adapters.persistence.sqlite_notification_repository import (
+    SQLiteNotificationRepository,
+)
 from application.ports.event_publisher import EventPublisher
 from application.ports.for_notifying_customer import ForNotifyingCustomer
 from application.services.notify_customer_service import NotifyCustomerService
@@ -68,9 +70,17 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Notify Customer Service")
     configure_logging()
-    configure_observability(app, os.getenv("OTEL_SERVICE_NAME", "Notify Customer Service".lower().replace(" ", "_")))
+    configure_observability(
+        app,
+        os.getenv(
+            "OTEL_SERVICE_NAME",
+            "Notify Customer Service".lower().replace(" ", "_"),
+        ),
+    )
     app.include_router(
-        create_notification_router(configure_notify_customer(database_path, rabbitmq_url))
+        create_notification_router(
+            configure_notify_customer(database_path, rabbitmq_url)
+        )
     )
     return app
 

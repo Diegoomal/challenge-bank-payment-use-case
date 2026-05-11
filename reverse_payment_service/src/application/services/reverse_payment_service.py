@@ -34,6 +34,7 @@ class ReversePaymentService(ForReversingPayment):
             PaymentReversed(
                 transaction_id=transaction.id,
                 customer_id=command.customer_id,
+                merchant_id=command.merchant_id or transaction.merchant_id or "",
                 amount=command.amount,
                 reason=command.reason,
                 reversed_at=reversed_at,

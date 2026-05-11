@@ -54,11 +54,11 @@ Main rules:
 | `confirm_payment_service` | `8003` | Confirm payments through the API |
 | `confirm_payment_consumer` | - | Consume credit success events and publish `payment.confirmed` |
 | `reverse_payment_service` | `8004` | Reverse payments through the API |
-| `reverse_payment_consumer` | - | Consume debit failure events and publish `payment.reversed` |
+| `reverse_payment_consumer` | - | Consume debit or credit failure events and publish `payment.reversed` |
 | `notify_merchant_service` | `8005` | Notify merchants after payment confirmation |
 | `notify_merchant_consumer` | - | Consume `payment.confirmed` and publish `merchant.notified` |
 | `notify_customer_service` | `8006` | Notify customers after payment confirmation |
-| `notify_customer_consumer` | - | Consume `payment.confirmed` and publish `customer.notified` |
+| `notify_customer_consumer` | - | Consume `payment.confirmed` or `payment.reversed` and publish `customer.notified` |
 | `issue_receipt_service` | `8007` | Issue receipts after payment confirmation |
 | `issue_receipt_consumer` | - | Consume `payment.confirmed` and publish `receipt.issued` |
 | `api_gateway` | `8080` | Single HTTP entry point for public API routes |
@@ -93,6 +93,11 @@ reverse_payment_consumer
   -> reverses the payment
   -> publishes payment.reversed
 
+notify_customer_consumer
+  -> consumes payment.reversed
+  -> notifies customer about failure or compensation
+  -> publishes customer.notified
+
 notify_merchant_consumer
   -> consumes payment.confirmed
   -> notifies merchant
@@ -100,7 +105,7 @@ notify_merchant_consumer
 
 notify_customer_consumer
   -> consumes payment.confirmed
-  -> notifies customer
+  -> notifies customer about success
   -> publishes customer.notified
 
 issue_receipt_consumer
@@ -131,11 +136,12 @@ Main routing keys:
 - Payment projections are idempotent by `transaction_id`.
 - Credits are idempotent by `transaction_id`.
 - Merchant notifications are idempotent by `transaction_id + merchant_id`.
-- Customer notifications are idempotent by `transaction_id + customer_id`.
+- Customer notifications are idempotent by
+  `transaction_id + customer_id + notification_type`.
 - Receipts are idempotent by `transaction_id`.
 
 Notification and receipt failures must not reverse or cancel a confirmed
-payment.
+payment. Customer reversal notifications are side effects of `payment.reversed`.
 
 ## API Entry Points
 

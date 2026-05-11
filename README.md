@@ -35,7 +35,7 @@ routing keys, API endpoints, and idempotency rules, see
 | Event-driven architecture | Services publish and consume RabbitMQ events instead of calling each other directly for saga progression. |
 | Ports and Adapters | Domain and application code stay independent from FastAPI, RabbitMQ, and SQLite details. |
 | Domain-driven boundaries | Each service models one business capability, such as account debit, payment confirmation, notification, or receipt issuing. |
-| Idempotency | Consumers use business keys such as `transaction_id`, `transaction_id + merchant_id`, and `transaction_id + customer_id`. |
+| Idempotency | Consumers use business keys such as `transaction_id`, `transaction_id + merchant_id`, and `transaction_id + customer_id + notification_type`. |
 | Outbox pattern | Services persist outgoing events in `outbox_events`; worker containers publish pending events to RabbitMQ. |
 | Local projections | Services that need payment context store their own projection from `payment.started`. |
 | Container orchestration | Docker Compose runs the full local environment with isolated services. |
@@ -87,14 +87,18 @@ The main flow follows these steps:
    -> reverse_payment_consumer consumes credit.failed
    -> publishes payment.reversed
 
+   -> notify_customer_consumer consumes payment.reversed
+   -> publishes customer.notified
+
 6. Post-confirmation actions run independently
    -> notify_merchant_consumer publishes merchant.notified
    -> notify_customer_consumer publishes customer.notified
    -> issue_receipt_consumer publishes receipt.issued
 ```
 
-Notification and receipt failures do not cancel a confirmed payment. They are
-post-confirmation side effects and have their own idempotency rules.
+Customer notifications also run after payment reversal, so the customer is
+informed about failed or compensated payments. Merchant notifications and
+receipt issuing remain post-confirmation side effects.
 
 ## Services At A Glance
 
@@ -105,9 +109,9 @@ post-confirmation side effects and have their own idempotency rules.
 | `debit_account_service` | Debits customer account balance. |
 | `credit_account_service` | Credits merchant account balance after successful debit. |
 | `confirm_payment_service` | Confirms payments after successful credit. |
-| `reverse_payment_service` | Reverses payments after failed debit. |
+| `reverse_payment_service` | Reverses payments after failed debit or credit. |
 | `notify_merchant_service` | Notifies merchants after payment confirmation. |
-| `notify_customer_service` | Notifies customers after payment confirmation. |
+| `notify_customer_service` | Notifies customers after payment confirmation or reversal. |
 | `issue_receipt_service` | Issues receipts after payment confirmation. |
 | `api_gateway` | Exposes a single local HTTP entry point. |
 | `rabbitmq` | Handles saga events and consumer delivery. |

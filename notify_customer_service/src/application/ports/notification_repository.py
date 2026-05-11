@@ -14,5 +14,6 @@ class NotificationRepository(Protocol):
         self,
         transaction_id: str,
         customer_id: str,
+        notification_type: object | None = None,
     ) -> Notification | None:
         pass

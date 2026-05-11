@@ -45,3 +45,7 @@ docker compose exec -T reverse_payment_service python -c "import sqlite3; c=sqli
 docker compose exec -T notify_merchant_service python -c "import sqlite3; c=sqlite3.connect('/data/notify_merchant.db'); print(c.execute('select routing_key,status,count(*) from outbox_events group by routing_key,status order by routing_key,status').fetchall())"
 docker compose exec -T notify_customer_service python -c "import sqlite3; c=sqlite3.connect('/data/notify_customer.db'); print(c.execute('select routing_key,status,count(*) from outbox_events group by routing_key,status order by routing_key,status').fetchall())"
 docker compose exec -T issue_receipt_service python -c "import sqlite3; c=sqlite3.connect('/data/issue_receipt.db'); print(c.execute('select routing_key,status,count(*) from outbox_events group by routing_key,status order by routing_key,status').fetchall())"
+
+Inspect customer notification types:
+
+docker compose exec -T notify_customer_service python -c "import sqlite3; c=sqlite3.connect('/data/notify_customer.db'); print(c.execute('select transaction_id, customer_id, notification_type, status from notifications order by created_at desc limit 10').fetchall())"

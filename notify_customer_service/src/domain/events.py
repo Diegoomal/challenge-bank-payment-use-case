@@ -8,6 +8,7 @@ class CustomerNotified:
     notification_id: str
     transaction_id: str
     customer_id: str
+    notification_type: str
     amount: Decimal
     channel: str
     status: str
@@ -23,6 +24,7 @@ class CustomerNotified:
             "notification_id": self.notification_id,
             "transaction_id": self.transaction_id,
             "customer_id": self.customer_id,
+            "notification_type": self.notification_type,
             "amount": str(self.amount),
             "channel": self.channel,
             "status": self.status,
