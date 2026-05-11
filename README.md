@@ -22,6 +22,10 @@ routing keys, API endpoints, and idempotency rules, see
 - Idempotent consumers for projections, notifications, and receipt issuing.
 - Transactional outbox workers for asynchronous broker publishing from service
   databases.
+- Structured JSON logs with correlation IDs, trace IDs, span IDs, business
+  event names, routing keys, and transaction IDs.
+- Distributed tracing across FastAPI requests and RabbitMQ saga messages with
+  OpenTelemetry and Jaeger.
 - Local orchestration with Docker Compose for services, broker, gateway, and
   observability tools.
 - Automated tests focused on domain behavior, application use cases, adapters,
@@ -39,7 +43,9 @@ routing keys, API endpoints, and idempotency rules, see
 | Outbox pattern | Services persist outgoing events in `outbox_events`; worker containers publish pending events to RabbitMQ. |
 | Local projections | Services that need payment context store their own projection from `payment.started`. |
 | Container orchestration | Docker Compose runs the full local environment with isolated services. |
-| Observability | The repository includes Prometheus, Grafana, and Jaeger configuration and notes. |
+| Structured logs | Services write JSON logs to stdout with `correlation_id`, `trace_id`, `span_id`, `event`, `routing_key`, and `transaction_id`. |
+| Distributed tracing | OpenTelemetry instruments FastAPI and RabbitMQ publish/consume operations; Jaeger displays traces locally. |
+| Metrics | Prometheus scrapes service `/metrics` endpoints and Grafana is available for dashboards. |
 
 ## Technologies
 
@@ -53,7 +59,7 @@ routing keys, API endpoints, and idempotency rules, see
 | Gateway | Nginx API gateway |
 | Tests | pytest |
 | Quality commands | Make, flake8 configuration |
-| Observability | Prometheus, Grafana, Jaeger, OpenTelemetry configuration |
+| Observability | Structured JSON logs, OpenTelemetry, Jaeger, Prometheus, Grafana |
 
 ## Payment Flow
 
@@ -184,6 +190,79 @@ RabbitMQ Management UI:
 http://localhost:15672
 user: bitbank
 password: bitbank
+```
+
+## Observability
+
+The local environment includes structured logs, distributed tracing, and
+metrics.
+
+### Structured Logs
+
+Each service writes JSON logs to stdout. Logs include operational context and
+business identifiers so a saga can be followed across containers.
+
+Common fields:
+
+```json
+{
+  "timestamp": "2026-05-11T19:41:52.021240+00:00",
+  "level": "INFO",
+  "service": "confirm_payment_outbox",
+  "logger": "shared.observability.messaging",
+  "message": "message published",
+  "correlation_id": "perfect-day-20260511164110",
+  "trace_id": "321c7d489fd5d7c995c55807ea5db724",
+  "span_id": "fe8e7ae59bbbbc52",
+  "event": "message.published",
+  "routing_key": "payment.confirmed",
+  "transaction_id": "1dbb08cf-0d12-4666-a282-087d1368884b"
+}
+```
+
+Useful log commands:
+
+```bash
+docker compose logs -f start_payment_service
+docker compose logs -f debit_account_consumer credit_account_consumer
+docker compose logs -f confirm_payment_consumer notify_customer_consumer
+```
+
+### Distributed Tracing
+
+FastAPI requests and RabbitMQ publish/consume operations are instrumented with
+OpenTelemetry. Message publishers inject trace context into RabbitMQ headers,
+and consumers extract it so saga steps remain connected in Jaeger.
+
+Jaeger UI:
+
+```text
+http://localhost:16686
+```
+
+The OpenTelemetry Collector receives OTLP traffic on:
+
+```text
+http://localhost:4318
+grpc://localhost:4317
+```
+
+Services are configured through environment variables in `docker-compose.yml`:
+
+```text
+OTEL_SERVICE_NAME=<service_name>
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel_collector:4318
+LOG_LEVEL=INFO
+```
+
+### Metrics
+
+Each FastAPI service exposes Prometheus metrics at `/metrics`. Prometheus and
+Grafana are available locally:
+
+```text
+Prometheus: http://localhost:9090
+Grafana:    http://localhost:3000
 ```
 
 ## Useful Documentation

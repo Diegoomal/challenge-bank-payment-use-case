@@ -35,7 +35,10 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Account Service")
     configure_logging()
-    configure_observability(app, os.getenv("OTEL_SERVICE_NAME", "Account Service".lower().replace(" ", "_")))
+    configure_observability(
+        app,
+        os.getenv("OTEL_SERVICE_NAME", "account_service"),
+    )
     app.include_router(
         create_account_router(configure_create_account(database_path, rabbitmq_url))
     )

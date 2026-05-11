@@ -2,6 +2,8 @@ import json
 
 import pika
 
+from observability.messaging import build_message_properties, message_published
+
 from application.ports.event_publisher import EventPublisher
 from domain.events import AccountCreated
 
@@ -25,14 +27,17 @@ class RabbitMQEventPublisher(EventPublisher):
                 exchange_type="topic",
                 durable=True,
             )
-            channel.basic_publish(
-                exchange=self.exchange_name,
-                routing_key="account.created",
-                body=json.dumps(event.to_payload()).encode("utf-8"),
-                properties=pika.BasicProperties(
-                    content_type="application/json",
-                    delivery_mode=pika.DeliveryMode.Persistent,
-                ),
-            )
+            payload = event.to_payload()
+            with message_published("account.created", payload):
+                channel.basic_publish(
+                    exchange=self.exchange_name,
+                    routing_key="account.created",
+                    body=json.dumps(payload).encode("utf-8"),
+                    properties=build_message_properties(
+                        payload,
+                        content_type="application/json",
+                        delivery_mode=pika.DeliveryMode.Persistent,
+                    ),
+                )
         finally:
             connection.close()
