@@ -85,8 +85,8 @@ services:
 
   account_service:
     build:
-      context: ./account_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: account_service/dockerfile
     container_name: bitbank_account_service
     environment:
       DATABASE_PATH: /data/account.db
@@ -105,8 +105,8 @@ services:
 
   start_payment_service:
     build:
-      context: ./start_payment_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: start_payment_service/dockerfile
     container_name: bitbank_start_payment_service
     environment:
       DATABASE_PATH: /data/start_payment.db
@@ -125,8 +125,8 @@ services:
 
   debit_account_service:
     build:
-      context: ./debit_account_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: debit_account_service/dockerfile
     container_name: bitbank_debit_account_service
     environment:
       DATABASE_PATH: /data/debit_account.db
@@ -145,8 +145,8 @@ services:
 
   credit_account_service:
     build:
-      context: ./credit_account_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: credit_account_service/dockerfile
     container_name: bitbank_credit_account_service
     environment:
       DATABASE_PATH: /data/credit_account.db
@@ -165,8 +165,8 @@ services:
   
   confirm_payment_service:
     build:
-      context: ./confirm_payment_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: confirm_payment_service/dockerfile
     container_name: bitbank_confirm_payment_service
     environment:
       DATABASE_PATH: /data/confirm_payment.db
@@ -185,8 +185,8 @@ services:
 
   reverse_payment_service:
     build:
-      context: ./reverse_payment_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: reverse_payment_service/dockerfile
     container_name: bitbank_reverse_payment_service
     environment:
       DATABASE_PATH: /data/reverse_payment.db
@@ -205,8 +205,8 @@ services:
 
   reverse_payment_consumer:
     build:
-      context: ./reverse_payment_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: reverse_payment_service/dockerfile
     container_name: bitbank_reverse_payment_consumer
     command: ["python", "consumer.py"]
     environment:
@@ -224,8 +224,8 @@ services:
 
   confirm_payment_consumer:
     build:
-      context: ./confirm_payment_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: confirm_payment_service/dockerfile
     container_name: bitbank_confirm_payment_consumer
     command: ["python", "consumer.py"]
     environment:
@@ -243,8 +243,8 @@ services:
 
   debit_account_consumer:
     build:
-      context: ./debit_account_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: debit_account_service/dockerfile
     container_name: bitbank_debit_account_consumer
     command: ["python", "consumer.py"]
     environment:
@@ -262,8 +262,8 @@ services:
 
   credit_account_consumer:
     build:
-      context: ./credit_account_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: credit_account_service/dockerfile
     container_name: bitbank_credit_account_consumer
     command: ["python", "consumer.py"]
     environment:
@@ -281,8 +281,8 @@ services:
 
   account_outbox:
     build:
-      context: ./account_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: account_service/dockerfile
     container_name: bitbank_account_outbox
     command: ["python", "outbox_worker.py"]
     environment:
@@ -300,8 +300,8 @@ services:
 
   start_payment_outbox:
     build:
-      context: ./start_payment_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: start_payment_service/dockerfile
     container_name: bitbank_start_payment_outbox
     command: ["python", "outbox_worker.py"]
     environment:
@@ -319,8 +319,8 @@ services:
 
   debit_account_outbox:
     build:
-      context: ./debit_account_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: debit_account_service/dockerfile
     container_name: bitbank_debit_account_outbox
     command: ["python", "outbox_worker.py"]
     environment:
@@ -338,8 +338,8 @@ services:
 
   credit_account_outbox:
     build:
-      context: ./credit_account_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: credit_account_service/dockerfile
     container_name: bitbank_credit_account_outbox
     command: ["python", "outbox_worker.py"]
     environment:
@@ -357,8 +357,8 @@ services:
 
   confirm_payment_outbox:
     build:
-      context: ./confirm_payment_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: confirm_payment_service/dockerfile
     container_name: bitbank_confirm_payment_outbox
     command: ["python", "outbox_worker.py"]
     environment:
@@ -376,8 +376,8 @@ services:
 
   reverse_payment_outbox:
     build:
-      context: ./reverse_payment_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: reverse_payment_service/dockerfile
     container_name: bitbank_reverse_payment_outbox
     command: ["python", "outbox_worker.py"]
     environment:
@@ -395,8 +395,8 @@ services:
 
   notify_merchant_service:
     build:
-      context: ./notify_merchant_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: notify_merchant_service/dockerfile
     container_name: bitbank_notify_merchant_service
     environment:
       DATABASE_PATH: /data/notify_merchant.db
@@ -415,8 +415,8 @@ services:
 
   notify_merchant_consumer:
     build:
-      context: ./notify_merchant_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: notify_merchant_service/dockerfile
     container_name: bitbank_notify_merchant_consumer
     command: ["python", "consumer.py"]
     environment:
@@ -434,8 +434,8 @@ services:
 
   notify_customer_service:
     build:
-      context: ./notify_customer_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: notify_customer_service/dockerfile
     container_name: bitbank_notify_customer_service
     environment:
       DATABASE_PATH: /data/notify_customer.db
@@ -454,8 +454,8 @@ services:
 
   notify_customer_consumer:
     build:
-      context: ./notify_customer_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: notify_customer_service/dockerfile
     container_name: bitbank_notify_customer_consumer
     command: ["python", "consumer.py"]
     environment:
@@ -473,8 +473,8 @@ services:
 
   issue_receipt_service:
     build:
-      context: ./issue_receipt_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: issue_receipt_service/dockerfile
     container_name: bitbank_issue_receipt_service
     environment:
       DATABASE_PATH: /data/issue_receipt.db
@@ -493,8 +493,8 @@ services:
 
   issue_receipt_consumer:
     build:
-      context: ./issue_receipt_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: issue_receipt_service/dockerfile
     container_name: bitbank_issue_receipt_consumer
     command: ["python", "consumer.py"]
     environment:
@@ -512,8 +512,8 @@ services:
 
   notify_merchant_outbox:
     build:
-      context: ./notify_merchant_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: notify_merchant_service/dockerfile
     container_name: bitbank_notify_merchant_outbox
     command: ["python", "outbox_worker.py"]
     environment:
@@ -531,8 +531,8 @@ services:
 
   notify_customer_outbox:
     build:
-      context: ./notify_customer_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: notify_customer_service/dockerfile
     container_name: bitbank_notify_customer_outbox
     command: ["python", "outbox_worker.py"]
     environment:
@@ -550,8 +550,8 @@ services:
 
   issue_receipt_outbox:
     build:
-      context: ./issue_receipt_service
-      dockerfile: dockerfile
+      context: .
+      dockerfile: issue_receipt_service/dockerfile
     container_name: bitbank_issue_receipt_outbox
     command: ["python", "outbox_worker.py"]
     environment:

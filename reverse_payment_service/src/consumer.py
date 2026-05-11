@@ -1,10 +1,17 @@
+import logging
 import os
 import time
+
+from observability.logging import configure_logging
 
 from configurator import create_saga_consumer
 
 
+logger = logging.getLogger(__name__)
+
+
 def main() -> None:
+    configure_logging()
     rabbitmq_url = os.getenv("RABBITMQ_URL")
     if not rabbitmq_url:
         raise RuntimeError("RABBITMQ_URL is required to start the consumer")
@@ -17,8 +24,8 @@ def main() -> None:
                 rabbitmq_url=rabbitmq_url,
             )
             consumer.start()
-        except Exception as error:
-            print(f"RabbitMQ consumer failed: {error}. Retrying in 5 seconds.")
+        except Exception:
+            logger.exception("rabbitmq consumer failed; retrying in 5 seconds")
             time.sleep(5)
 
 

@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pika
 
-from observability.messaging import begin_message
+from observability.messaging import message_consumed
 
 from adapters.messaging.debit_completed_handler import (
     DebitCompletedHandler,
@@ -50,8 +50,8 @@ class RabbitMQDebitCompletedConsumer:
     def _handle_message(self, channel, method, properties, body) -> None:
         try:
             payload = json.loads(body.decode("utf-8"))
-            begin_message(payload, method.routing_key)
-            self.handler.handle(self._message_from_payload(payload))
+            with message_consumed(payload, method.routing_key, properties.headers):
+                self.handler.handle(self._message_from_payload(payload))
         except Exception:
             channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
             raise

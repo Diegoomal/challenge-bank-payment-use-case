@@ -12,7 +12,9 @@ from adapters.messaging.saga_event_handler import SagaEventHandler
 from adapters.notification.in_memory_notification_gateway import (
     InMemoryNotificationGateway,
 )
-from adapters.persistence.sqlite_notification_repository import SQLiteNotificationRepository
+from adapters.persistence.sqlite_notification_repository import (
+    SQLiteNotificationRepository,
+)
 from application.ports.event_publisher import EventPublisher
 from application.ports.for_notifying_merchant import ForNotifyingMerchant
 from application.services.notify_merchant_service import NotifyMerchantService
@@ -68,8 +70,13 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Notify Merchant Service")
     configure_logging()
-    configure_observability(app, os.getenv("OTEL_SERVICE_NAME", "Notify Merchant Service".lower().replace(" ", "_")))
+    configure_observability(
+        app,
+        os.getenv("OTEL_SERVICE_NAME", "notify_merchant_service"),
+    )
     app.include_router(
-        create_notification_router(configure_notify_merchant(database_path, rabbitmq_url))
+        create_notification_router(
+            configure_notify_merchant(database_path, rabbitmq_url)
+        )
     )
     return app

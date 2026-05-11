@@ -10,7 +10,7 @@ import pika
 
 from observability.context import set_correlation_id
 from observability.logging import configure_logging
-from observability.messaging import log_message_published
+from observability.messaging import build_message_properties, message_published
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class OutboxWorker:
             try:
                 payload = json.loads(event["payload"])
                 set_correlation_id(payload.get("correlation_id"))
-                self._publish(event["routing_key"], event["payload"])
+                self._publish(event["routing_key"], event["payload"], payload)
             except Exception as error:
                 self._mark_failed(event["id"], str(error))
                 logger.exception(
@@ -49,7 +49,6 @@ class OutboxWorker:
                 )
             else:
                 self._mark_published(event["id"])
-                log_message_published(event["routing_key"], payload)
 
     def _get_pending(self, limit: int) -> list[sqlite3.Row]:
         with self._connect() as connection:
@@ -64,7 +63,7 @@ class OutboxWorker:
                 (limit,),
             ).fetchall()
 
-    def _publish(self, routing_key: str, payload: str) -> None:
+    def _publish(self, routing_key: str, body: str, payload: dict) -> None:
         parameters = pika.URLParameters(self.rabbitmq_url)
         connection = pika.BlockingConnection(parameters)
         try:
@@ -74,15 +73,17 @@ class OutboxWorker:
                 exchange_type="topic",
                 durable=True,
             )
-            channel.basic_publish(
-                exchange=self.exchange_name,
-                routing_key=routing_key,
-                body=payload.encode("utf-8"),
-                properties=pika.BasicProperties(
-                    content_type="application/json",
-                    delivery_mode=pika.DeliveryMode.Persistent,
-                ),
-            )
+            with message_published(routing_key, payload):
+                channel.basic_publish(
+                    exchange=self.exchange_name,
+                    routing_key=routing_key,
+                    body=body.encode("utf-8"),
+                    properties=build_message_properties(
+                        payload,
+                        content_type="application/json",
+                        delivery_mode=pika.DeliveryMode.Persistent,
+                    ),
+                )
         finally:
             connection.close()
 

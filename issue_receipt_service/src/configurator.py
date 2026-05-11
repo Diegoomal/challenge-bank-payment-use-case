@@ -61,7 +61,10 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Issue Receipt Service")
     configure_logging()
-    configure_observability(app, os.getenv("OTEL_SERVICE_NAME", "Issue Receipt Service".lower().replace(" ", "_")))
+    configure_observability(
+        app,
+        os.getenv("OTEL_SERVICE_NAME", "issue_receipt_service"),
+    )
     app.include_router(
         create_receipt_router(configure_issue_receipt(database_path, rabbitmq_url))
     )
