@@ -13,7 +13,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        service:
+          - account_service
+          - start_payment_service
+          - debit_account_service
+          - credit_account_service
+          - confirm_payment_service
+          - reverse_payment_service
+          - notify_merchant_service
+          - notify_customer_service
+          - issue_receipt_service
         python-version: ["3.10"]
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
 
     steps:
       - uses: actions/checkout@v4
