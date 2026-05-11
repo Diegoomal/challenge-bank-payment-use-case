@@ -14,7 +14,9 @@ def _configure_tracing() -> None:
     _tracing_configured = True
     try:
         from opentelemetry import trace
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -22,7 +24,9 @@ def _configure_tracing() -> None:
         return
 
     service_name = os.getenv("OTEL_SERVICE_NAME", "rabbitmq_worker")
-    provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
+    provider = TracerProvider(
+        resource=Resource.create({"service.name": service_name})
+    )
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if endpoint:
         provider.add_span_processor(

@@ -22,6 +22,7 @@ class PaymentStartedMessage:
 class DebitFailedMessage:
     transaction_id: str
     customer_id: str
+    merchant_id: str | None
     amount: Decimal
     reason: str
     occurred_at: datetime

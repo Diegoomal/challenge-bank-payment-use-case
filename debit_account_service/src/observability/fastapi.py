@@ -10,7 +10,12 @@ from observability.context import set_correlation_id
 logger = logging.getLogger(__name__)
 
 try:
-    from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        Counter,
+        Histogram,
+        generate_latest,
+    )
 except Exception:  # pragma: no cover - optional dependency
     CONTENT_TYPE_LATEST = "text/plain"
     Counter = None
@@ -66,7 +71,9 @@ def configure_observability(app, service_name: str) -> None:
 def _configure_tracing(app, service_name: str) -> None:
     try:
         from opentelemetry import trace
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider

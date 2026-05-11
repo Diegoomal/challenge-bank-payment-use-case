@@ -8,6 +8,7 @@ class DebitCompleted:
     transaction_id: str
     account_id: str
     customer_id: str
+    merchant_id: str
     amount: Decimal
     occurred_at: datetime
 
@@ -21,6 +22,7 @@ class DebitCompleted:
             "transaction_id": self.transaction_id,
             "account_id": self.account_id,
             "customer_id": self.customer_id,
+            "merchant_id": self.merchant_id,
             "amount": str(self.amount),
             "occurred_at": self.occurred_at.isoformat(),
         }
@@ -30,6 +32,7 @@ class DebitCompleted:
 class DebitFailed:
     transaction_id: str
     customer_id: str
+    merchant_id: str
     amount: Decimal
     reason: str
     occurred_at: datetime
@@ -43,6 +46,7 @@ class DebitFailed:
             "event_name": self.event_name,
             "transaction_id": self.transaction_id,
             "customer_id": self.customer_id,
+            "merchant_id": self.merchant_id,
             "amount": str(self.amount),
             "reason": self.reason,
             "occurred_at": self.occurred_at.isoformat(),

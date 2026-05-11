@@ -15,7 +15,11 @@ class Transaction:
     confirmed_at: datetime | None = None
 
     @classmethod
-    def start(cls, transaction_id: str, merchant_id: str | None = None) -> "Transaction":
+    def start(
+        cls,
+        transaction_id: str,
+        merchant_id: str | None = None,
+    ) -> "Transaction":
         cls._validate_transaction_id(transaction_id)
         now = datetime.now(timezone.utc)
         return cls(

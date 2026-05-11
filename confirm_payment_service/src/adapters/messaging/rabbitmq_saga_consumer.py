@@ -7,7 +7,7 @@ import pika
 from observability.messaging import begin_message
 
 from adapters.messaging.saga_event_handler import (
-    DebitCompletedMessage,
+    CreditCompletedMessage,
     PaymentStartedMessage,
     SagaEventHandler,
 )
@@ -36,7 +36,7 @@ class RabbitMQSagaConsumer:
             durable=True,
         )
         channel.queue_declare(queue=self.queue_name, durable=True)
-        for routing_key in ["payment.started", "debit.completed"]:
+        for routing_key in ["payment.started", "credit.completed"]:
             channel.queue_bind(
                 exchange=self.exchange_name,
                 queue=self.queue_name,
@@ -57,9 +57,9 @@ class RabbitMQSagaConsumer:
                 self.handler.handle_payment_started(
                     self._payment_started_from_payload(payload)
                 )
-            elif method.routing_key == "debit.completed":
-                self.handler.handle_debit_completed(
-                    self._debit_completed_from_payload(payload)
+            elif method.routing_key == "credit.completed":
+                self.handler.handle_credit_completed(
+                    self._credit_completed_from_payload(payload)
                 )
         except Exception:
             channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
@@ -81,13 +81,14 @@ class RabbitMQSagaConsumer:
         )
 
     @staticmethod
-    def _debit_completed_from_payload(
+    def _credit_completed_from_payload(
         payload: dict[str, str],
-    ) -> DebitCompletedMessage:
-        return DebitCompletedMessage(
+    ) -> CreditCompletedMessage:
+        return CreditCompletedMessage(
             transaction_id=payload["transaction_id"],
             account_id=payload["account_id"],
             customer_id=payload["customer_id"],
+            merchant_id=payload["merchant_id"],
             amount=Decimal(payload["amount"]),
-            occurred_at=datetime.fromisoformat(payload["occurred_at"]),
+            credited_at=datetime.fromisoformat(payload["credited_at"]),
         )

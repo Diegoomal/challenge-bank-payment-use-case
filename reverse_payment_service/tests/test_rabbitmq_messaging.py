@@ -52,13 +52,15 @@ def test_rabbitmq_saga_consumer_parses_debit_failed_payload():
     payload = {
         "transaction_id": "transaction-1",
         "customer_id": "customer-1",
+        "merchant_id": "merchant-1",
         "amount": "10.00",
         "reason": "INSUFFICIENT_BALANCE",
         "occurred_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    message = RabbitMQSagaConsumer._debit_failed_from_payload(payload)
+    message = RabbitMQSagaConsumer._failure_from_payload(payload)
 
     assert message.transaction_id == "transaction-1"
+    assert message.merchant_id == "merchant-1"
     assert message.reason == "INSUFFICIENT_BALANCE"
     assert message.amount == Decimal("10.00")

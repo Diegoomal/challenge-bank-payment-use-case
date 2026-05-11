@@ -43,6 +43,7 @@ password: bitbank
 | `notify_merchant_service` | `http://localhost:8005` |
 | `notify_customer_service` | `http://localhost:8006` |
 | `issue_receipt_service` | `http://localhost:8007` |
+| `credit_account_service` | `http://localhost:8008` |
 | RabbitMQ AMQP | `localhost:5672` |
 | RabbitMQ Management | `http://localhost:15672` |
 
@@ -73,6 +74,27 @@ account = Account.create(
     customer_id="customer-1",
     holder_name="Customer One",
     balance=Decimal("100.00"),
+)
+repository.save(account)
+print(account.id)
+PY
+```
+
+Seed the merchant account in `credit_account_service` so the transfer can be
+credited after debit succeeds:
+
+```bash
+docker compose exec credit_account_service python - <<'PY'
+from decimal import Decimal
+
+from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository
+from domain.account import Account
+
+repository = SQLiteAccountRepository("/data/credit_account.db")
+account = Account.create(
+    customer_id="merchant-1",
+    holder_name="Merchant One",
+    balance=Decimal("0.00"),
 )
 repository.save(account)
 print(account.id)
@@ -111,6 +133,7 @@ Useful logs:
 ```bash
 docker compose logs -f start_payment_service
 docker compose logs -f debit_account_consumer
+docker compose logs -f credit_account_consumer
 docker compose logs -f confirm_payment_consumer
 docker compose logs -f reverse_payment_consumer
 docker compose logs -f notify_merchant_consumer
@@ -178,6 +201,7 @@ for service in \
   account_service \
   start_payment_service \
   debit_account_service \
+  credit_account_service \
   confirm_payment_service \
   reverse_payment_service \
   notify_merchant_service \

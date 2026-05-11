@@ -75,6 +75,7 @@ services:
       - account_service
       - start_payment_service
       - debit_account_service
+      - credit_account_service
       - confirm_payment_service
       - reverse_payment_service
       - notify_merchant_service
@@ -137,6 +138,26 @@ services:
       - "8001:8001"
     volumes:
       - debit_account_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  credit_account_service:
+    build:
+      context: ./credit_account_service
+      dockerfile: dockerfile
+    container_name: bitbank_credit_account_service
+    environment:
+      DATABASE_PATH: /data/credit_account.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: credit_account_service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
+    ports:
+      - "8008:8004"
+    volumes:
+      - credit_account_data:/data
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -239,6 +260,25 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  credit_account_consumer:
+    build:
+      context: ./credit_account_service
+      dockerfile: dockerfile
+    container_name: bitbank_credit_account_consumer
+    command: ["python", "consumer.py"]
+    environment:
+      DATABASE_PATH: /data/credit_account.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: credit_account_consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
+    volumes:
+      - credit_account_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   account_outbox:
     build:
       context: ./account_service
@@ -291,6 +331,25 @@ services:
       LOG_LEVEL: INFO
     volumes:
       - debit_account_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  credit_account_outbox:
+    build:
+      context: ./credit_account_service
+      dockerfile: dockerfile
+    container_name: bitbank_credit_account_outbox
+    command: ["python", "outbox_worker.py"]
+    environment:
+      DATABASE_PATH: /data/credit_account.db
+      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: credit_account_outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      LOG_LEVEL: INFO
+    volumes:
+      - credit_account_data:/data
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -515,6 +574,7 @@ volumes:
   start_payment_data:
   confirm_payment_data:
   debit_account_data:
+  credit_account_data:
   notify_merchant_data:
   notify_customer_data:
   issue_receipt_data:

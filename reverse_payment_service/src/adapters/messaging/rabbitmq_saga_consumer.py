@@ -36,7 +36,7 @@ class RabbitMQSagaConsumer:
             durable=True,
         )
         channel.queue_declare(queue=self.queue_name, durable=True)
-        for routing_key in ["payment.started", "debit.failed"]:
+        for routing_key in ["payment.started", "debit.failed", "credit.failed"]:
             channel.queue_bind(
                 exchange=self.exchange_name,
                 queue=self.queue_name,
@@ -57,9 +57,9 @@ class RabbitMQSagaConsumer:
                 self.handler.handle_payment_started(
                     self._payment_started_from_payload(payload)
                 )
-            elif method.routing_key == "debit.failed":
+            elif method.routing_key in ["debit.failed", "credit.failed"]:
                 self.handler.handle_debit_failed(
-                    self._debit_failed_from_payload(payload)
+                    self._failure_from_payload(payload)
                 )
         except Exception:
             channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
@@ -79,11 +79,14 @@ class RabbitMQSagaConsumer:
         )
 
     @staticmethod
-    def _debit_failed_from_payload(payload: dict[str, str]) -> DebitFailedMessage:
+    def _failure_from_payload(payload: dict[str, str]) -> DebitFailedMessage:
         return DebitFailedMessage(
             transaction_id=payload["transaction_id"],
             customer_id=payload["customer_id"],
+            merchant_id=payload.get("merchant_id"),
             amount=Decimal(payload["amount"]),
             reason=payload["reason"],
-            occurred_at=datetime.fromisoformat(payload["occurred_at"]),
+            occurred_at=datetime.fromisoformat(
+                payload.get("occurred_at") or payload["failed_at"]
+            ),
         )

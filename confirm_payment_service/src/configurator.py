@@ -66,7 +66,13 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Confirm Payment Service")
     configure_logging()
-    configure_observability(app, os.getenv("OTEL_SERVICE_NAME", "Confirm Payment Service".lower().replace(" ", "_")))
+    configure_observability(
+        app,
+        os.getenv(
+            "OTEL_SERVICE_NAME",
+            "Confirm Payment Service".lower().replace(" ", "_"),
+        ),
+    )
     app.include_router(
         create_payment_router(configure_confirm_payment(database_path, rabbitmq_url))
     )

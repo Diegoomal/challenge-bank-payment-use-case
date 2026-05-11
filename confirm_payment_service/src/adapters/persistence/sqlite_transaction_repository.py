@@ -20,7 +20,10 @@ class SQLiteTransactionRepository(TransactionRepository):
                     id, merchant_id, status, confirmed_at, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
-                    merchant_id = COALESCE(excluded.merchant_id, transactions.merchant_id),
+                    merchant_id = COALESCE(
+                        excluded.merchant_id,
+                        transactions.merchant_id
+                    ),
                     status = excluded.status,
                     confirmed_at = excluded.confirmed_at,
                     updated_at = excluded.updated_at
@@ -85,4 +88,6 @@ class SQLiteTransactionRepository(TransactionRepository):
                 for row in connection.execute("PRAGMA table_info(transactions)")
             }
             if "merchant_id" not in columns:
-                connection.execute("ALTER TABLE transactions ADD COLUMN merchant_id TEXT")
+                connection.execute(
+                    "ALTER TABLE transactions ADD COLUMN merchant_id TEXT"
+                )

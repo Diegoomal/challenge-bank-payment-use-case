@@ -19,6 +19,7 @@ def test_debit_account_endpoint_completes_debit(tmp_path):
         json={
             "transaction_id": "transaction-1",
             "customer_id": "customer-1",
+            "merchant_id": "merchant-1",
             "amount": "40.00",
         },
     )
@@ -40,6 +41,7 @@ def test_debit_account_endpoint_returns_failed_when_account_not_found(tmp_path):
         json={
             "transaction_id": "transaction-1",
             "customer_id": "customer-1",
+            "merchant_id": "merchant-1",
             "amount": "40.00",
         },
     )

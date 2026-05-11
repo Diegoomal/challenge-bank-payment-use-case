@@ -59,7 +59,13 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Debit Account Service")
     configure_logging()
-    configure_observability(app, os.getenv("OTEL_SERVICE_NAME", "Debit Account Service".lower().replace(" ", "_")))
+    configure_observability(
+        app,
+        os.getenv(
+            "OTEL_SERVICE_NAME",
+            "Debit Account Service".lower().replace(" ", "_"),
+        ),
+    )
     app.include_router(
         create_account_router(configure_debit_account(database_path, rabbitmq_url))
     )

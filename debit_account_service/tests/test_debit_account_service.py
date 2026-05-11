@@ -26,7 +26,12 @@ def test_debit_account_completes_and_publishes_event():
     service = DebitAccountService(repository, publisher)
 
     result = service.debit_account(
-        DebitAccountCommand("transaction-1", "customer-1", Decimal("30.00"))
+        DebitAccountCommand(
+            "transaction-1",
+            "customer-1",
+            "merchant-1",
+            Decimal("30.00"),
+        )
     )
 
     assert result.status == DebitStatus.COMPLETED
@@ -40,6 +45,7 @@ def test_debit_account_completes_and_publishes_event():
     assert event.event_name == "DebitCompleted"
     assert event.transaction_id == "transaction-1"
     assert event.account_id == account.id
+    assert event.merchant_id == "merchant-1"
 
 
 def test_debit_account_fails_when_account_not_found():
@@ -48,7 +54,12 @@ def test_debit_account_fails_when_account_not_found():
     service = DebitAccountService(repository, publisher)
 
     result = service.debit_account(
-        DebitAccountCommand("transaction-1", "customer-1", Decimal("30.00"))
+        DebitAccountCommand(
+            "transaction-1",
+            "customer-1",
+            "merchant-1",
+            Decimal("30.00"),
+        )
     )
 
     assert result.status == DebitStatus.FAILED
@@ -67,7 +78,12 @@ def test_debit_account_fails_when_balance_is_insufficient():
     service = DebitAccountService(repository, publisher)
 
     result = service.debit_account(
-        DebitAccountCommand("transaction-1", "customer-1", Decimal("30.00"))
+        DebitAccountCommand(
+            "transaction-1",
+            "customer-1",
+            "merchant-1",
+            Decimal("30.00"),
+        )
     )
 
     assert result.status == DebitStatus.FAILED

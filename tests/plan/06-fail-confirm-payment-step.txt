@@ -1,0 +1,42 @@
+Scenario 06 - failure in confirmation step
+
+Goal:
+Validate behavior when debit succeeds but payment confirmation does not run.
+Downstream post-confirmation services must not execute before payment.confirmed.
+
+Preparation:
+
+docker compose up -d --build
+docker compose stop confirm_payment_consumer
+
+curl -X POST http://localhost:8080/api/v1/accounts -H "Content-Type: application/json" -d '{"customer_id":"scenario-06-customer","account_holder":"Scenario 06 Customer","initial_deposit":"100.00"}'
+
+docker compose exec -T debit_account_service python -c "from decimal import Decimal; from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository; from domain.account import Account; r=SQLiteAccountRepository('/data/debit_account.db'); a=r.get_by_customer_id('scenario-06-customer') or Account.create(customer_id='scenario-06-customer', holder_name='Scenario 06 Customer', balance=Decimal('100.00')); r.save(a); print(a.id, a.customer_id, a.balance)"
+
+docker compose exec -T credit_account_service python -c "from decimal import Decimal; from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository; from domain.account import Account; r=SQLiteAccountRepository('/data/credit_account.db'); a=r.get_by_customer_id('scenario-06-merchant') or Account.create(customer_id='scenario-06-merchant', holder_name='Scenario 06 Merchant', balance=Decimal('0.00')); r.save(a); print(a.id, a.customer_id, a.balance)"
+
+Action:
+
+curl -X POST http://localhost:8080/api/v1/payments/start -H "Content-Type: application/json" -d '{"customer_id":"scenario-06-customer","merchant_id":"scenario-06-merchant","amount":"50.00","payment_method":"ACCOUNT_BALANCE"}'
+
+Wait a few seconds, then inspect the result:
+
+docker compose exec -T debit_account_service python -c "import sqlite3; c=sqlite3.connect('/data/debit_account.db'); print('accounts=', c.execute('select customer_id, balance from accounts where customer_id=?', ('scenario-06-customer',)).fetchall()); print('outbox=', c.execute('select event_name, routing_key, status from outbox_events order by created_at desc limit 5').fetchall())"
+docker compose exec -T credit_account_service python -c "import sqlite3; c=sqlite3.connect('/data/credit_account.db'); print('accounts=', c.execute('select customer_id, balance from accounts where customer_id=?', ('scenario-06-merchant',)).fetchall()); print('outbox=', c.execute('select event_name, routing_key, status from outbox_events order by created_at desc limit 5').fetchall())"
+docker compose exec -T confirm_payment_service python -c "import sqlite3; c=sqlite3.connect('/data/confirm_payment.db'); print(c.execute('select id, customer_id, merchant_id, status, confirmed_at from transactions where customer_id=? order by updated_at desc limit 5', ('scenario-06-customer',)).fetchall())"
+docker compose exec -T notify_merchant_service python -c "import sqlite3; c=sqlite3.connect('/data/notify_merchant.db'); print(c.execute('select transaction_id, merchant_id, status from notifications where merchant_id=? order by notified_at desc limit 5', ('scenario-06-merchant',)).fetchall())"
+docker compose exec -T notify_customer_service python -c "import sqlite3; c=sqlite3.connect('/data/notify_customer.db'); print(c.execute('select transaction_id, customer_id, status from notifications where customer_id=? order by notified_at desc limit 5', ('scenario-06-customer',)).fetchall())"
+docker compose exec -T issue_receipt_service python -c "import sqlite3; c=sqlite3.connect('/data/issue_receipt.db'); print(c.execute('select transaction_id, customer_id, merchant_id, status from receipts where customer_id=? order by issued_at desc limit 5', ('scenario-06-customer',)).fetchall())"
+
+Recovery check:
+
+docker compose start confirm_payment_consumer
+docker compose logs --no-color --tail=120 confirm_payment_consumer
+docker compose exec -T confirm_payment_service python -c "import sqlite3; c=sqlite3.connect('/data/confirm_payment.db'); print(c.execute('select id, customer_id, merchant_id, status, confirmed_at from transactions where customer_id=? order by updated_at desc limit 5', ('scenario-06-customer',)).fetchall())"
+
+Expected behavior:
+
+- Debit succeeds, debit.completed is published, credit succeeds, and credit.completed is published.
+- Payment is not CONFIRMED while confirm_payment_consumer is stopped.
+- Merchant notification, customer notification, and receipt are absent before confirmation.
+- After confirm_payment_consumer starts again, confirmation and downstream steps can continue.

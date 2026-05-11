@@ -11,6 +11,9 @@ scrape_configs:
   - job_name: debit_account_service
     static_configs:
       - targets: ["debit_account_service:8001"]
+  - job_name: credit_account_service
+    static_configs:
+      - targets: ["credit_account_service:8004"]
   - job_name: confirm_payment_service
     static_configs:
       - targets: ["confirm_payment_service:8003"]

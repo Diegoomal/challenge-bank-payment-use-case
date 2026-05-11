@@ -49,8 +49,10 @@ Main rules:
 | `start_payment_service` | `8000` | Start payment transactions and publish `payment.started` |
 | `debit_account_service` | `8001` | Debit accounts through the API |
 | `debit_account_consumer` | - | Consume `payment.started` and publish debit outcome events |
+| `credit_account_service` | `8008` | Credit merchant accounts through the API |
+| `credit_account_consumer` | - | Consume `debit.completed` and publish credit outcome events |
 | `confirm_payment_service` | `8003` | Confirm payments through the API |
-| `confirm_payment_consumer` | - | Consume debit success events and publish `payment.confirmed` |
+| `confirm_payment_consumer` | - | Consume credit success events and publish `payment.confirmed` |
 | `reverse_payment_service` | `8004` | Reverse payments through the API |
 | `reverse_payment_consumer` | - | Consume debit failure events and publish `payment.reversed` |
 | `notify_merchant_service` | `8005` | Notify merchants after payment confirmation |
@@ -74,15 +76,20 @@ debit_account_consumer
   -> debits customer account
   -> publishes debit.completed or debit.failed
 
+credit_account_consumer
+  -> consumes debit.completed
+  -> credits merchant account
+  -> publishes credit.completed or credit.failed
+
 confirm_payment_consumer
   -> consumes payment.started for a local transaction projection
-  -> consumes debit.completed
+  -> consumes credit.completed
   -> confirms the payment
   -> publishes payment.confirmed
 
 reverse_payment_consumer
   -> consumes payment.started for a local transaction projection
-  -> consumes debit.failed
+  -> consumes debit.failed or credit.failed
   -> reverses the payment
   -> publishes payment.reversed
 
@@ -111,6 +118,8 @@ Main routing keys:
 - `payment.started`
 - `debit.completed`
 - `debit.failed`
+- `credit.completed`
+- `credit.failed`
 - `payment.confirmed`
 - `payment.reversed`
 - `merchant.notified`
@@ -120,6 +129,7 @@ Main routing keys:
 ## Idempotency Rules
 
 - Payment projections are idempotent by `transaction_id`.
+- Credits are idempotent by `transaction_id`.
 - Merchant notifications are idempotent by `transaction_id + merchant_id`.
 - Customer notifications are idempotent by `transaction_id + customer_id`.
 - Receipts are idempotent by `transaction_id`.
@@ -134,6 +144,7 @@ Common local endpoints:
 - `POST http://localhost:8080/api/v1/accounts`
 - `POST http://localhost:8080/api/v1/payments/start`
 - `POST http://localhost:8080/api/v1/accounts/debit`
+- `POST http://localhost:8080/api/v1/accounts/credit`
 - `POST http://localhost:8080/api/v1/payments/confirm`
 - `POST http://localhost:8080/api/v1/payments/reverse`
 - `POST http://localhost:8080/api/v1/notifications/merchant`
@@ -145,6 +156,7 @@ Direct service endpoints remain available for debugging:
 - `POST http://localhost:8002/accounts`
 - `POST http://localhost:8000/payments/start`
 - `POST http://localhost:8001/accounts/debit`
+- `POST http://localhost:8008/accounts/credit`
 - `POST http://localhost:8003/payments/confirm`
 - `POST http://localhost:8004/payments/reverse`
 - `POST http://localhost:8005/notifications/merchant`
