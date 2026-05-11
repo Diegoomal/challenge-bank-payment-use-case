@@ -1,159 +1,129 @@
-# Start Payment Service Overview
+# Issue Receipt Service
 
-This repository contains the scaffold for `start_payment_service`, a Python
-service that will follow Ports and Adapters Architecture, also known as
-Hexagonal Architecture.
+## Business Description
 
-The service belongs to a payment saga. It is the first step and should prepare a
-payment intent before the saga continues to `debit_account_service`.
+The `issue_receipt_service` is responsible for issuing the receipt after a payment transaction is confirmed.
 
-Use this document as the initial context when working with AI coding agents such
-as Codex, Claude, or similar tools.
+This service belongs to the Receipt context and represents the document generation step of the payment saga.
 
-## Goal
+It consumes the `payment.confirmed` event, creates a receipt with a snapshot of the confirmed transaction data, persists the receipt, and publishes the `receipt.issued` event.
 
-The service will start a payment request.
+## Bounded Context
 
-Planned payment fields:
+Receipt.
 
-- `id`
-- `payer_account_id`
-- `merchant_id`
-- `amount`
-- `currency`
-- `status`
-- `idempotency_key`
-- `created_at`
-- `updated_at`
+## Ubiquitous Language
 
-Planned operations for the driving port:
+- Receipt: document that proves a confirmed payment.
+- ReceiptId: the unique receipt identifier.
+- TransactionData: snapshot of the confirmed transaction data.
+- IssuingStatus: the current receipt issuing state.
+- PaymentConfirmed: event that reports that the payment was confirmed.
 
-- start a payment;
-- get a payment by ID;
-- list payments by payer or merchant;
-- mark the payment as ready for debit;
-- reject invalid payment requests.
+## Aggregate Root
 
-The initial business rules should include:
+### Receipt
 
-- amount must be greater than zero;
-- payer and merchant identifiers are required;
-- idempotency keys must prevent duplicate payment creation;
-- a started payment must be persisted before any next saga step is triggered.
+The `Receipt` is the Aggregate Root of the Receipt context.
 
-## Architecture
+It controls the issuing lifecycle and ensures that only one valid receipt is issued for each transaction.
 
-The project follows a hexagonal structure directly under `src`:
+## Receipt States
 
-```text
-src/
-├── configurator.py
-├── main.py
-├── domain/
-├── application/
-│   ├── ports/
-│   └── services/
-└── adapters/
-    ├── cli/
-    ├── persistence/
-    └── messaging/
-```
+- PENDING
+- ISSUED
+- FAILED
 
-### `domain`
+## Invariants
 
-Will contain pure payment entities and value objects. This package must not
-depend on FastAPI, SQLite, messaging clients, or concrete adapters.
+- A receipt can only be issued after the payment is confirmed.
+- A receipt must be associated with a `transaction_id`.
+- A transaction must have at most one valid receipt.
+- The receipt must contain a snapshot of the transaction data.
+- The receipt must not directly depend on the `Transaction` entity from another service.
+- Issuing must be idempotent by `transaction_id`.
+- If a receipt already exists for the transaction, the service must return the existing one or ignore the duplicate event.
 
-### `application/ports`
+## Main Use Case
 
-Will contain the application ports:
+### IssueReceipt
 
-- driving ports for API, CLI, or message consumers that start payments;
-- driven ports for persistence, idempotency lookup, and saga/event publishing.
+Responsible for issuing the receipt after the payment is confirmed.
 
-Driving ports are called by adapters. Driven ports are implemented by adapters.
+Expected input:
 
-### `application/services`
+- transaction_id
+- customer_id
+- merchant_id
+- amount
+- confirmed_at
 
-Will contain use cases that implement the driving ports and enforce payment
-start rules. Services may depend on the domain and interfaces, but not on
-concrete adapters.
+Expected output:
 
-### `adapters`
+- receipt_id
+- transaction_id
+- status
+- issued_at
 
-Will contain concrete adapters around the hexagon:
+## Consumed Domain Events
 
-- FastAPI HTTP routes as a driving adapter;
-- SQLite persistence as a driven adapter;
-- messaging producer adapter for the next saga step;
-- CLI only as a development or demonstration adapter if still useful.
+### PaymentConfirmed
 
-### `configurator.py`
+Consumed when the payment transaction is confirmed.
 
-Will build concrete dependencies. Expected direction:
+Expected payload:
 
-```python
-SQLitePaymentRepository -> StartPaymentService -> FastAPI routes or CLI
-```
+- transaction_id
+- customer_id
+- merchant_id
+- amount
+- confirmed_at
 
-Adapters must not be instantiated directly inside application services.
+## Published Domain Events
 
-## Dependencies
+### ReceiptIssued
 
-`requirements.txt` includes FastAPI for the future HTTP adapter and `aiosqlite`
-for asynchronous SQLite access. Python also includes the standard library
-`sqlite3` module, which can be used if the implementation stays synchronous.
+Published when the receipt is issued successfully.
 
-## Tests
+Suggested payload:
 
-Tests live in `tests/`.
+- receipt_id
+- transaction_id
+- customer_id
+- merchant_id
+- amount
+- issued_at
 
-Current tests still reflect the template scaffold and should be replaced when
-the payment domain is implemented. Future tests should cover:
+## Ports
 
-- successful payment start;
-- invalid amount rejection;
-- required payer and merchant fields;
-- idempotency behavior;
-- persistence adapter behavior;
-- API contract once FastAPI routes are added.
+### ReceiptRepository
 
-`pytest.ini` configures `pythonpath = src`, so imports start from `src`.
+Responsible for saving and retrieving receipts.
 
-## Implementation Standards
+### ReceiptGenerator
 
-When changing the project, follow these rules:
+Responsible for generating the receipt data or document.
 
-- keep the application hexagon directly under `src`;
-- keep entities pure under `src/domain`;
-- define driving and driven ports under `src/application/ports`;
-- implement use cases under `src/application/services`;
-- keep concrete adapters under `src/adapters`;
-- do not import concrete adapters from domain or application services;
-- wire concrete dependencies in `src/configurator.py`;
-- use SQLite only through a persistence adapter;
-- expose FastAPI only through an adapter layer;
-- add or update tests under `tests/` when behavior changes.
+### EventPublisher
 
-## AI Agent Guidelines
+Responsible for publishing domain events.
 
-- Before editing, check git status because local uncommitted changes may exist.
-- Do not revert existing changes unless explicitly requested.
-- Prefer small changes aligned with Ports and Adapters Architecture.
-- If creating a new external dependency, define a driven port first.
-- If creating a new entry point, call a driving port instead of a concrete
-  service method that is not part of a port.
-- Run `make test` after behavior changes.
-- Run `make lint` or `make check` when changing imports, style, or structure.
+## Responsibilities
 
-## Main Commands
+This service must:
 
-```bash
-make run
-make test
-make lint
-make docs
-make check
-```
+- Consume the `payment.confirmed` event.
+- Create a receipt for the confirmed transaction.
+- Store a snapshot of the transaction data.
+- Ensure idempotency by `transaction_id`.
+- Persist the receipt.
+- Publish the `receipt.issued` event.
 
-See `specs/setup.md` for environment setup and project execution details.
+This service must not:
+
+- Create transactions.
+- Debit accounts.
+- Credit accounts.
+- Confirm payments.
+- Reverse payments.
+- Notify customers or merchants.

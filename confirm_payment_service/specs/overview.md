@@ -1,74 +1,127 @@
-# Confirm Payment Service Overview
+# Confirm Payment Service
 
-This repository contains `confirm_payment_service`, a Python service that
-follows Ports and Adapters Architecture, also known as Hexagonal Architecture.
+## Business Description
 
-The service belongs to the Payment bounded context. It confirms a payment after
-receiving a successful debit event and publishes `PaymentConfirmed`.
+The `confirm_payment_service` is responsible for confirming a payment transaction after the recipient account has been credited successfully.
 
-## Goal
+This service belongs to the Payment context and represents the step where the payment stops being only started and becomes confirmed.
 
-The service confirms transactions after account debit succeeds.
+It consumes the `credit.completed` event, validates whether the transaction can be confirmed, changes the status to `CONFIRMED`, and publishes the `payment.confirmed` event.
 
-Transaction fields:
+## Bounded Context
 
-- `id`
-- `status`
-- `confirmed_at`
-- `created_at`
-- `updated_at`
+Payment.
 
-The main operation is exposed by `ForConfirmingPayment`:
+## Ubiquitous Language
 
-- confirm a payment from a `DebitCompleted` event.
+- Payment: a payment requested by a customer.
+- Transaction: the main payment record.
+- TransactionId: the unique transaction identifier.
+- TransactionStatus: the current transaction state.
+- Confirmation: confirmation that the payment was completed.
+- CreditCompleted: event that reports that the recipient credit was completed successfully.
 
-Business rules:
+## Aggregate Root
 
-- only `STARTED` transactions can be confirmed;
-- already confirmed transactions cannot be confirmed again;
-- reversed transactions cannot be confirmed;
-- failed transactions cannot be confirmed;
-- confirmation requires a `transaction_id`;
-- confirmation happens only after a successful debit.
+### Transaction
 
-## Architecture
+The `Transaction` is the Aggregate Root of the Payment context.
 
-```text
-src/
-├── configurator.py
-├── consumer.py
-├── main.py
-├── domain/
-├── application/
-│   ├── ports/
-│   └── services/
-└── adapters/
-    ├── api/
-    ├── messaging/
-    └── persistence/
-```
+It controls the payment lifecycle and ensures that a transaction is only confirmed in a valid state.
 
-## Messaging
+## Transaction States
 
-Consumed events:
+- STARTED
+- CONFIRMED
+- REVERSED
+- FAILED
 
-```text
-payment.started
-debit.completed
-```
+## Invariants
 
-Published event:
+- A transaction can only be confirmed if it has `STARTED` status.
+- An already confirmed transaction cannot be confirmed again.
+- A reversed transaction cannot be confirmed.
+- A failed transaction cannot be confirmed.
+- The confirmation must be associated with a `transaction_id`.
+- The confirmation can only occur after the recipient credit is completed successfully.
+- The confirmation must be idempotent by `transaction_id`.
 
-```text
-payment.confirmed
-```
+## Main Use Case
 
-## Main Commands
+### ConfirmPayment
 
-```bash
-make run
-make test
-make lint
-make docs
-make check
-```
+Responsible for confirming a transaction after the credit is completed.
+
+Expected input:
+
+- transaction_id
+- customer_id
+- merchant_id
+- account_id
+- amount
+- credited_at
+
+Expected output:
+
+- transaction_id
+- status
+- confirmed_at
+
+## Consumed Domain Events
+
+### CreditCompleted
+
+Consumed when the recipient account credit was completed successfully.
+
+Expected payload:
+
+- transaction_id
+- customer_id
+- merchant_id
+- account_id
+- amount
+- credited_at
+
+## Published Domain Events
+
+### PaymentConfirmed
+
+Published when the payment is confirmed successfully.
+
+Suggested payload:
+
+- transaction_id
+- customer_id
+- merchant_id
+- amount
+- confirmed_at
+
+## Ports
+
+### TransactionRepository
+
+Responsible for retrieving and saving transactions.
+
+### EventPublisher
+
+Responsible for publishing domain events.
+
+## Responsibilities
+
+This service must:
+
+- Consume the `credit.completed` event.
+- Find the transaction by `transaction_id`.
+- Validate whether the transaction can be confirmed.
+- Change the transaction status to `CONFIRMED`.
+- Persist the change.
+- Publish the `payment.confirmed` event.
+
+This service must not:
+
+- Create transactions.
+- Debit accounts.
+- Credit accounts.
+- Reverse payments.
+- Notify customers or merchants.
+- Issue receipts.
