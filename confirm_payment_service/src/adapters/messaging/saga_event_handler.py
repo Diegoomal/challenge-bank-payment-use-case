@@ -19,12 +19,13 @@ class PaymentStartedMessage:
 
 
 @dataclass(frozen=True)
-class DebitCompletedMessage:
+class CreditCompletedMessage:
     transaction_id: str
     account_id: str
     customer_id: str
+    merchant_id: str
     amount: Decimal
-    occurred_at: datetime
+    credited_at: datetime
 
 
 class SagaEventHandler:
@@ -42,9 +43,9 @@ class SagaEventHandler:
                 Transaction.start(message.transaction_id, message.merchant_id)
             )
 
-    def handle_debit_completed(
+    def handle_credit_completed(
         self,
-        message: DebitCompletedMessage,
+        message: CreditCompletedMessage,
     ) -> ConfirmPaymentResult:
         return self.confirm_payment.confirm_payment(
             ConfirmPaymentCommand(
@@ -52,6 +53,6 @@ class SagaEventHandler:
                 account_id=message.account_id,
                 customer_id=message.customer_id,
                 amount=message.amount,
-                occurred_at=message.occurred_at,
+                occurred_at=message.credited_at,
             )
         )

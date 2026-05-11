@@ -34,6 +34,7 @@ password: bitbank
 
 | Service | URL |
 | --- | --- |
+| `api_gateway` | `http://localhost:8080` |
 | `start_payment_service` | `http://localhost:8000` |
 | `debit_account_service` | `http://localhost:8001` |
 | `account_service` | `http://localhost:8002` |
@@ -42,13 +43,14 @@ password: bitbank
 | `notify_merchant_service` | `http://localhost:8005` |
 | `notify_customer_service` | `http://localhost:8006` |
 | `issue_receipt_service` | `http://localhost:8007` |
+| `credit_account_service` | `http://localhost:8008` |
 | RabbitMQ AMQP | `localhost:5672` |
 | RabbitMQ Management | `http://localhost:15672` |
 
 ## Create An Account
 
 ```bash
-curl -X POST http://localhost:8002/accounts \
+curl -X POST http://localhost:8080/api/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{
     "customer_id": "customer-1",
@@ -78,10 +80,31 @@ print(account.id)
 PY
 ```
 
+Seed the merchant account in `credit_account_service` so the transfer can be
+credited after debit succeeds:
+
+```bash
+docker compose exec credit_account_service python - <<'PY'
+from decimal import Decimal
+
+from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository
+from domain.account import Account
+
+repository = SQLiteAccountRepository("/data/credit_account.db")
+account = Account.create(
+    customer_id="merchant-1",
+    holder_name="Merchant One",
+    balance=Decimal("0.00"),
+)
+repository.save(account)
+print(account.id)
+PY
+```
+
 ## Start A Payment
 
 ```bash
-curl -X POST http://localhost:8000/payments/start \
+curl -X POST http://localhost:8080/api/v1/payments/start \
   -H "Content-Type: application/json" \
   -d '{
     "customer_id": "customer-1",
@@ -110,6 +133,7 @@ Useful logs:
 ```bash
 docker compose logs -f start_payment_service
 docker compose logs -f debit_account_consumer
+docker compose logs -f credit_account_consumer
 docker compose logs -f confirm_payment_consumer
 docker compose logs -f reverse_payment_consumer
 docker compose logs -f notify_merchant_consumer
@@ -125,7 +149,7 @@ APIs can be called directly for local testing.
 Notify merchant:
 
 ```bash
-curl -X POST http://localhost:8005/notifications/merchant \
+curl -X POST http://localhost:8080/api/v1/notifications/merchant \
   -H "Content-Type: application/json" \
   -d '{
     "transaction_id": "transaction-1",
@@ -141,7 +165,7 @@ curl -X POST http://localhost:8005/notifications/merchant \
 Notify customer:
 
 ```bash
-curl -X POST http://localhost:8006/notifications/customer \
+curl -X POST http://localhost:8080/api/v1/notifications/customer \
   -H "Content-Type: application/json" \
   -d '{
     "transaction_id": "transaction-1",
@@ -157,7 +181,7 @@ curl -X POST http://localhost:8006/notifications/customer \
 Issue receipt:
 
 ```bash
-curl -X POST http://localhost:8007/receipts \
+curl -X POST http://localhost:8080/api/v1/receipts \
   -H "Content-Type: application/json" \
   -d '{
     "transaction_id": "transaction-1",
@@ -177,6 +201,7 @@ for service in \
   account_service \
   start_payment_service \
   debit_account_service \
+  credit_account_service \
   confirm_payment_service \
   reverse_payment_service \
   notify_merchant_service \

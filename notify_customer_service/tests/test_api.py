@@ -28,6 +28,7 @@ def test_notify_customer_endpoint_delivers_notification(tmp_path):
     assert body["notification_id"]
     assert body["transaction_id"] == "transaction-1"
     assert body["customer_id"] == "customer-1"
+    assert body["notification_type"] == "PAYMENT_CONFIRMED"
     assert body["status"] == "DELIVERED"
     assert body["notified_at"]
 

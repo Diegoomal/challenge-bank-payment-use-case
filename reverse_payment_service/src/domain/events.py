@@ -7,6 +7,7 @@ from decimal import Decimal
 class PaymentReversed:
     transaction_id: str
     customer_id: str
+    merchant_id: str
     amount: Decimal
     reason: str
     reversed_at: datetime
@@ -20,6 +21,7 @@ class PaymentReversed:
             "event_name": self.event_name,
             "transaction_id": self.transaction_id,
             "customer_id": self.customer_id,
+            "merchant_id": self.merchant_id,
             "amount": str(self.amount),
             "reason": self.reason,
             "reversed_at": self.reversed_at.isoformat(),

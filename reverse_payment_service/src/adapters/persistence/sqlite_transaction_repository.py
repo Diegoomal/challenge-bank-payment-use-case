@@ -17,9 +17,18 @@ class SQLiteTransactionRepository(TransactionRepository):
             connection.execute(
                 """
                 INSERT INTO transactions (
-                    id, status, reversal_reason, reversed_at, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    id, customer_id, merchant_id, status, reversal_reason,
+                    reversed_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
+                    customer_id = COALESCE(
+                        excluded.customer_id,
+                        transactions.customer_id
+                    ),
+                    merchant_id = COALESCE(
+                        excluded.merchant_id,
+                        transactions.merchant_id
+                    ),
                     status = excluded.status,
                     reversal_reason = excluded.reversal_reason,
                     reversed_at = excluded.reversed_at,
@@ -27,6 +36,8 @@ class SQLiteTransactionRepository(TransactionRepository):
                 """,
                 (
                     transaction.id,
+                    transaction.customer_id,
+                    transaction.merchant_id,
                     transaction.status.value,
                     transaction.reversal_reason,
                     transaction.reversed_at.isoformat()
@@ -40,7 +51,8 @@ class SQLiteTransactionRepository(TransactionRepository):
         with self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT id, status, reversal_reason, reversed_at, created_at, updated_at
+                SELECT id, customer_id, merchant_id, status, reversal_reason,
+                       reversed_at, created_at, updated_at
                 FROM transactions
                 WHERE id = ?
                 """,
@@ -50,6 +62,8 @@ class SQLiteTransactionRepository(TransactionRepository):
             return None
         return Transaction(
             id=row["id"],
+            customer_id=row["customer_id"],
+            merchant_id=row["merchant_id"],
             status=TransactionStatus(row["status"]),
             reversal_reason=row["reversal_reason"],
             reversed_at=datetime.fromisoformat(row["reversed_at"])
@@ -72,6 +86,8 @@ class SQLiteTransactionRepository(TransactionRepository):
                 """
                 CREATE TABLE IF NOT EXISTS transactions (
                     id TEXT PRIMARY KEY,
+                    customer_id TEXT,
+                    merchant_id TEXT,
                     status TEXT NOT NULL,
                     reversal_reason TEXT,
                     reversed_at TEXT,
@@ -80,3 +96,12 @@ class SQLiteTransactionRepository(TransactionRepository):
                 )
                 """
             )
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(transactions)")
+            }
+            for column in ["customer_id", "merchant_id"]:
+                if column not in columns:
+                    connection.execute(
+                        f"ALTER TABLE transactions ADD COLUMN {column} TEXT"
+                    )

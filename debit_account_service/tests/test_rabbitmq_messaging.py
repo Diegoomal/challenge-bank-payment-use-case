@@ -25,6 +25,7 @@ def test_rabbitmq_event_publisher_publishes_debit_completed():
                 transaction_id="transaction-1",
                 account_id="account-1",
                 customer_id="customer-1",
+                merchant_id="merchant-1",
                 amount=Decimal("10.00"),
                 occurred_at=datetime.now(timezone.utc),
             )
@@ -49,6 +50,7 @@ def test_rabbitmq_event_publisher_publishes_debit_failed():
             DebitFailed(
                 transaction_id="transaction-1",
                 customer_id="customer-1",
+                merchant_id="merchant-1",
                 amount=Decimal("10.00"),
                 reason="INSUFFICIENT_BALANCE",
                 occurred_at=datetime.now(timezone.utc),

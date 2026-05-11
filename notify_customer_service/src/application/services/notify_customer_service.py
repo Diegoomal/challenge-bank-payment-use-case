@@ -6,6 +6,7 @@ from application.schemas import NotifyCustomerCommand, NotifyCustomerResult
 from domain.delivery_status import DeliveryStatus
 from domain.events import CustomerNotified
 from domain.notification import Notification
+from domain.notification_type import NotificationType
 
 
 class NotifyCustomerService(ForNotifyingCustomer):
@@ -26,21 +27,13 @@ class NotifyCustomerService(ForNotifyingCustomer):
         notification = self.notification_repository.get_by_transaction_and_customer(
             command.transaction_id,
             command.customer_id,
+            command.notification_type,
         )
         if notification is not None and notification.status == DeliveryStatus.DELIVERED:
             return self._to_result(notification)
 
         if notification is None:
-            notification = Notification.create_for_payment_confirmed(
-                transaction_id=command.transaction_id,
-                merchant_id=command.merchant_id,
-                customer_id=command.customer_id,
-                amount=command.amount,
-                recipient=command.recipient or self._default_recipient(
-                    command.customer_id
-                ),
-                channel=command.channel,
-            )
+            notification = self._create_notification(command)
 
         try:
             self.notification_gateway.send(notification)
@@ -56,6 +49,7 @@ class NotifyCustomerService(ForNotifyingCustomer):
                 notification_id=notification.id,
                 transaction_id=notification.transaction_id,
                 customer_id=notification.customer_id,
+                notification_type=notification.notification_type.value,
                 amount=notification.amount,
                 channel=notification.channel.value,
                 status=notification.status.value,
@@ -63,6 +57,29 @@ class NotifyCustomerService(ForNotifyingCustomer):
             )
         )
         return self._to_result(notification)
+
+    def _create_notification(
+        self,
+        command: NotifyCustomerCommand,
+    ) -> Notification:
+        recipient = command.recipient or self._default_recipient(command.customer_id)
+        if command.notification_type == NotificationType.PAYMENT_REVERSED:
+            return Notification.create_for_payment_reversed(
+                transaction_id=command.transaction_id,
+                merchant_id=command.merchant_id,
+                customer_id=command.customer_id,
+                amount=command.amount,
+                recipient=recipient,
+                channel=command.channel,
+            )
+        return Notification.create_for_payment_confirmed(
+            transaction_id=command.transaction_id,
+            merchant_id=command.merchant_id,
+            customer_id=command.customer_id,
+            amount=command.amount,
+            recipient=recipient,
+            channel=command.channel,
+        )
 
     @staticmethod
     def _default_recipient(customer_id: str) -> str:
@@ -74,6 +91,7 @@ class NotifyCustomerService(ForNotifyingCustomer):
             notification_id=notification.id,
             transaction_id=notification.transaction_id,
             customer_id=notification.customer_id,
+            notification_type=notification.notification_type,
             status=notification.status,
             notified_at=notification.notified_at,
         )

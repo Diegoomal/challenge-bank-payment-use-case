@@ -14,6 +14,7 @@ def create_account_router(debit_account: ForDebitingAccount) -> APIRouter:
             DebitAccountCommand(
                 transaction_id=request.transaction_id,
                 customer_id=request.customer_id,
+                merchant_id=request.merchant_id,
                 amount=request.amount,
             )
         )

@@ -42,6 +42,7 @@ def test_saga_handler_projects_payment_started_and_reverses_debit_failed():
         DebitFailedMessage(
             transaction_id="transaction-1",
             customer_id="customer-1",
+            merchant_id="merchant-1",
             amount=Decimal("50.00"),
             reason="INSUFFICIENT_BALANCE",
             occurred_at=datetime.now(timezone.utc),
@@ -50,3 +51,4 @@ def test_saga_handler_projects_payment_started_and_reverses_debit_failed():
 
     assert result.status == TransactionStatus.REVERSED
     assert len(publisher.reversed_events) == 1
+    assert publisher.reversed_events[0].merchant_id == "merchant-1"

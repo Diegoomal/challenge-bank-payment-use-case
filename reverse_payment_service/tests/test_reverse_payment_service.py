@@ -23,7 +23,7 @@ class InMemoryTransactionRepository:
 
 def test_reverse_payment_reverses_transaction_and_publishes_event():
     repository = InMemoryTransactionRepository()
-    repository.save(Transaction.start("transaction-1"))
+    repository.save(Transaction.start("transaction-1", "customer-1", "merchant-1"))
     publisher = InMemoryEventPublisher()
     service = ReversePaymentService(repository, publisher)
 
@@ -31,6 +31,7 @@ def test_reverse_payment_reverses_transaction_and_publishes_event():
         ReversePaymentCommand(
             transaction_id="transaction-1",
             customer_id="customer-1",
+            merchant_id="merchant-1",
             amount=Decimal("50.00"),
             reason="INSUFFICIENT_BALANCE",
             occurred_at=datetime.now(timezone.utc),
@@ -41,11 +42,12 @@ def test_reverse_payment_reverses_transaction_and_publishes_event():
     assert result.reason == "INSUFFICIENT_BALANCE"
     assert len(publisher.reversed_events) == 1
     assert publisher.reversed_events[0].event_name == "PaymentReversed"
+    assert publisher.reversed_events[0].merchant_id == "merchant-1"
 
 
 def test_reverse_payment_is_idempotent_when_already_reversed():
     repository = InMemoryTransactionRepository()
-    transaction = Transaction.start("transaction-1")
+    transaction = Transaction.start("transaction-1", "customer-1", "merchant-1")
     transaction.reverse("INSUFFICIENT_BALANCE")
     repository.save(transaction)
     publisher = InMemoryEventPublisher()
@@ -55,6 +57,7 @@ def test_reverse_payment_is_idempotent_when_already_reversed():
         ReversePaymentCommand(
             transaction_id="transaction-1",
             customer_id="customer-1",
+            merchant_id="merchant-1",
             amount=Decimal("50.00"),
             reason="INSUFFICIENT_BALANCE",
             occurred_at=datetime.now(timezone.utc),
@@ -76,6 +79,7 @@ def test_reverse_payment_fails_when_transaction_not_found():
             ReversePaymentCommand(
                 transaction_id="missing",
                 customer_id="customer-1",
+                merchant_id="merchant-1",
                 amount=Decimal("50.00"),
                 reason="ACCOUNT_NOT_FOUND",
                 occurred_at=datetime.now(timezone.utc),

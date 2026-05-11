@@ -1,27 +1,124 @@
 <!-- AI context: use specs/overview.md as the primary project overview before making code changes. -->
 # Bitbank Payment Saga
 
-Study project for implementing payment use cases with hexagonal architecture,
-event-driven communication, and local orchestration with Docker Compose.
+Bitbank is a study project for a payment flow built as an event-driven saga.
+The goal is to show how a payment can move through independent services while
+keeping each service focused on its own business boundary, data model, and
+infrastructure adapters.
 
-The current implementation covers account creation and the first two payment
-saga steps:
+This README is the project presentation. For the detailed service map, ports,
+routing keys, API endpoints, and idempotency rules, see
+[specs/overview.md](specs/overview.md).
 
-1. `account_service`: creates customer financial accounts.
-2. `start_payment_service`: starts a payment transaction.
-3. `debit_account_service`: debits the customer account after receiving the
-   payment started event.
-4. `confirm_payment_service`: confirms the payment after receiving the debit
-   completed event.
-5. `reverse_payment_service`: reverses the payment after receiving a debit
-   failed event.
-6. `notify_merchant_service`: ...
-7. `notify_customer_service`: ...
-8. `issue_receipt_service`: ...
+## What This Project Demonstrates
 
-## Architecture
+- A distributed payment saga from payment start to debit, credit, confirmation,
+  compensation, notifications, and receipt issuing.
+- Event-driven communication between services with RabbitMQ topic routing.
+- Hexagonal Architecture, also known as Ports and Adapters, applied consistently
+  across the services.
+- Service-owned persistence, where each service keeps its own SQLite database
+  instead of sharing domain tables.
+- Idempotent consumers for projections, notifications, and receipt issuing.
+- Transactional outbox workers for asynchronous broker publishing from service
+  databases.
+- Local orchestration with Docker Compose for services, broker, gateway, and
+  observability tools.
+- Automated tests focused on domain behavior, application use cases, adapters,
+  and HTTP APIs.
 
-Each service follows a basic hexagonal structure:
+## Techniques Applied
+
+| Technique | How it appears in the project |
+| --- | --- |
+| Saga pattern | The payment is processed through ordered steps and compensation is triggered when debit fails. |
+| Event-driven architecture | Services publish and consume RabbitMQ events instead of calling each other directly for saga progression. |
+| Ports and Adapters | Domain and application code stay independent from FastAPI, RabbitMQ, and SQLite details. |
+| Domain-driven boundaries | Each service models one business capability, such as account debit, payment confirmation, notification, or receipt issuing. |
+| Idempotency | Consumers use business keys such as `transaction_id`, `transaction_id + merchant_id`, and `transaction_id + customer_id + notification_type`. |
+| Outbox pattern | Services persist outgoing events in `outbox_events`; worker containers publish pending events to RabbitMQ. |
+| Local projections | Services that need payment context store their own projection from `payment.started`. |
+| Container orchestration | Docker Compose runs the full local environment with isolated services. |
+| Observability | The repository includes Prometheus, Grafana, and Jaeger configuration and notes. |
+
+## Technologies
+
+| Area | Stack |
+| --- | --- |
+| Language | Python |
+| HTTP APIs | FastAPI |
+| Messaging | RabbitMQ topic exchange |
+| Persistence | SQLite per service |
+| Containers | Docker and Docker Compose |
+| Gateway | Nginx API gateway |
+| Tests | pytest |
+| Quality commands | Make, flake8 configuration |
+| Observability | Prometheus, Grafana, Jaeger, OpenTelemetry configuration |
+
+## Payment Flow
+
+The main flow follows these steps:
+
+```text
+1. Account is created
+   -> account_service publishes account.created
+
+2. Payment is started
+   -> start_payment_service stores the transaction
+   -> publishes payment.started
+
+3. Customer account is debited
+   -> debit_account_consumer consumes payment.started
+   -> debit_account_service debits the account
+   -> publishes debit.completed or debit.failed
+
+4. Merchant account is credited
+   -> credit_account_consumer consumes debit.completed
+   -> credit_account_service credits the merchant account
+   -> publishes credit.completed or credit.failed
+
+5. Payment is confirmed or reversed
+   -> confirm_payment_consumer consumes credit.completed
+   -> publishes payment.confirmed
+
+   -> reverse_payment_consumer consumes debit.failed
+   -> publishes payment.reversed
+
+   -> reverse_payment_consumer consumes credit.failed
+   -> publishes payment.reversed
+
+   -> notify_customer_consumer consumes payment.reversed
+   -> publishes customer.notified
+
+6. Post-confirmation actions run independently
+   -> notify_merchant_consumer publishes merchant.notified
+   -> notify_customer_consumer publishes customer.notified
+   -> issue_receipt_consumer publishes receipt.issued
+```
+
+Customer notifications also run after payment reversal, so the customer is
+informed about failed or compensated payments. Merchant notifications and
+receipt issuing remain post-confirmation side effects.
+
+## Services At A Glance
+
+| Service | Responsibility |
+| --- | --- |
+| `account_service` | Creates customer financial accounts. |
+| `start_payment_service` | Starts payment transactions. |
+| `debit_account_service` | Debits customer account balance. |
+| `credit_account_service` | Credits merchant account balance after successful debit. |
+| `confirm_payment_service` | Confirms payments after successful credit. |
+| `reverse_payment_service` | Reverses payments after failed debit or credit. |
+| `notify_merchant_service` | Notifies merchants after payment confirmation. |
+| `notify_customer_service` | Notifies customers after payment confirmation or reversal. |
+| `issue_receipt_service` | Issues receipts after payment confirmation. |
+| `api_gateway` | Exposes a single local HTTP entry point. |
+| `rabbitmq` | Handles saga events and consumer delivery. |
+
+## Architecture Shape
+
+Each service follows the same internal layout:
 
 ```text
 service/
@@ -35,6 +132,7 @@ service/
 │   │   ├── messaging/
 │   │   └── persistence/
 │   ├── configurator.py
+│   ├── consumer.py
 │   └── main.py
 ├── tests/
 ├── specs/
@@ -42,70 +140,45 @@ service/
 └── dockerfile
 ```
 
-Main rules:
+The `domain` layer contains business concepts and events. The `application`
+layer defines ports and use cases. The `adapters` layer contains framework,
+broker, and database integrations.
 
-- `domain` does not depend on frameworks, databases, or messaging.
-- `application/ports` defines inbound and outbound contracts.
-- `application/services` implements use cases.
-- `adapters` contains FastAPI, RabbitMQ, and SQLite details.
-- `configurator.py` wires concrete dependencies.
+## Run Locally
 
-## Implemented Flow
+Start the full environment:
 
-```text
-POST /payments/start
-  -> start_payment_service creates a Transaction with STARTED status
-  -> stores it in SQLite
-  -> publishes payment.started to RabbitMQ
-
-RabbitMQ exchange: payments
-  routing key: payment.started
-
-Debit account consumer
-  -> consumes payment.started
-  -> calls DebitAccountService
-  -> finds Account by customer_id
-  -> debits balance when possible
-  -> publishes debit.completed or debit.failed
-
-Confirm payment consumer
-  -> consumes payment.started and stores a local transaction projection
-  -> consumes debit.completed
-  -> confirms STARTED transactions
-  -> publishes payment.confirmed
-
-Reverse payment consumer
-  -> consumes payment.started and stores a local transaction projection
-  -> consumes debit.failed
-  -> reverses STARTED or PROCESSING transactions
-  -> publishes payment.reversed
+```bash
+docker compose up -d --build
 ```
 
-Events used:
+Check the containers:
 
-```text
-payment.started
-DebitCompleted -> debit.completed
-DebitFailed    -> debit.failed
-payment.confirmed
-payment.reversed
+```bash
+docker compose ps
 ```
 
-## Services
+Follow service logs:
 
-| Service | Port | Responsibility |
-| --- | --- | --- |
-| `account_service` | `8002` | Create accounts and publish `AccountCreated` |
-| `start_payment_service` | `8000` | Start payment and publish `PaymentStarted` |
-| `debit_account_service` | `8001` | Debit account through the API |
-| `debit_account_consumer` | - | Consume `payment.started` and execute debit |
-| `confirm_payment_service` | `8003` | Confirm payment through the API |
-| `confirm_payment_consumer` | - | Consume `payment.started` and `debit.completed` |
-| `reverse_payment_service` | `8004` | Reverse payment through the API |
-| `reverse_payment_consumer` | - | Consume `payment.started` and `debit.failed` |
-| `rabbitmq` | `5672`, `15672` | Broker and management UI |
+```bash
+docker compose logs -f start_payment_service
+docker compose logs -f debit_account_consumer
+docker compose logs -f confirm_payment_consumer
+```
 
-RabbitMQ Management:
+Stop everything:
+
+```bash
+docker compose down
+```
+
+Remove local volumes and service databases:
+
+```bash
+docker compose down -v
+```
+
+RabbitMQ Management UI:
 
 ```text
 http://localhost:15672
@@ -113,226 +186,23 @@ user: bitbank
 password: bitbank
 ```
 
-## Start The Environment
+## Useful Documentation
 
-```bash
-docker compose up -d --build
-```
+- [specs/overview.md](specs/overview.md): detailed architecture, services,
+  ports, events, idempotency rules, and API entry points.
+- [specs/setup.md](specs/setup.md): local setup and test commands.
+- [tips-n-snippets/ports-and-adapters-architecture.md](tips-n-snippets/ports-and-adapters-architecture.md): architecture notes.
+- [tips-n-snippets/jaeger.md](tips-n-snippets/jaeger.md): tracing notes.
+- [tips-n-snippets/prometheus.md](tips-n-snippets/prometheus.md): metrics notes.
+- [tips-n-snippets/grafana.md](tips-n-snippets/grafana.md): dashboard notes.
 
-Check containers:
+## Current Notes
 
-```bash
-docker compose ps
-```
+The project already implements the main payment saga path, including payment
+start, debit, confirmation, reversal, merchant notification, customer
+notification, and receipt issuing.
 
-Follow logs:
+Known next improvements:
 
-```bash
-docker compose logs -f start_payment_service
-docker compose logs -f debit_account_service
-docker compose logs -f debit_account_consumer
-```
-
-Stop the environment:
-
-```bash
-docker compose down
-```
-
-Remove volumes and container databases:
-
-```bash
-docker compose down -v
-```
-
-## Test Account Creation
-
-```bash
-curl -X POST http://localhost:8002/accounts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_id": "customer-1",
-    "account_holder": "Customer One",
-    "initial_deposit": "100.00"
-  }'
-```
-
-Expected response:
-
-```json
-{
-  "account_id": "...",
-  "customer_id": "customer-1",
-  "status": "ACTIVE",
-  "created_at": "..."
-}
-```
-
-This command also publishes `account.created` to RabbitMQ. The
-`debit_account_service` still uses its own SQLite database, so account
-creation is not yet projected automatically into the debit service.
-
-## Test Start Payment
-
-```bash
-curl -X POST http://localhost:8000/payments/start \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_id": "customer-1",
-    "merchant_id": "merchant-1",
-    "amount": "50.00",
-    "payment_method": "ACCOUNT_BALANCE"
-  }'
-```
-
-Expected response:
-
-```json
-{
-  "transaction_id": "...",
-  "status": "STARTED",
-  "created_at": "..."
-}
-```
-
-This command also publishes `payment.started` to RabbitMQ.
-
-## Create A Test Account
-
-There is no public endpoint for account creation yet. To test the successful
-debit case, create an account directly in the container SQLite database:
-
-```bash
-docker compose exec debit_account_service python - <<'PY'
-from decimal import Decimal
-
-from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository
-from domain.account import Account
-
-repository = SQLiteAccountRepository("/data/debit_account.db")
-account = Account.create(
-    customer_id="customer-1",
-    holder_name="Customer One",
-    balance=Decimal("100.00"),
-)
-repository.save(account)
-print(account.id)
-PY
-```
-
-## Test Debit Account Through The API
-
-```bash
-curl -X POST http://localhost:8001/accounts/debit \
-  -H "Content-Type: application/json" \
-  -d '{
-    "transaction_id": "transaction-1",
-    "customer_id": "customer-1",
-    "amount": "50.00"
-  }'
-```
-
-Expected response with an existing account:
-
-```json
-{
-  "account_id": "...",
-  "transaction_id": "transaction-1",
-  "status": "COMPLETED",
-  "reason": null
-}
-```
-
-Expected response without an existing account:
-
-```json
-{
-  "account_id": null,
-  "transaction_id": "transaction-1",
-  "status": "FAILED",
-  "reason": "ACCOUNT_NOT_FOUND"
-}
-```
-
-## Test The Saga Flow
-
-1. Start the environment.
-2. Create an account for `customer-1`.
-3. Call `POST /payments/start`.
-4. Check the consumer:
-
-```bash
-docker compose logs -f debit_account_consumer
-```
-
-With enough balance, the consumer should process the `payment.started` event,
-debit the account, and publish `debit.completed`.
-
-## Automated Tests
-
-`start_payment_service`:
-
-```bash
-cd start_payment_service
-make test
-make lint
-```
-
-`debit_account_service`:
-
-```bash
-cd debit_account_service
-make test
-make lint
-```
-
-Or, inside each service:
-
-```bash
-make check
-```
-
-## Current Status
-
-Implemented:
-
-- `CreateAccount` with FastAPI, SQLite, and RabbitMQ publisher.
-- `StartPayment` with FastAPI, SQLite, and RabbitMQ publisher.
-- `DebitAccount` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
-- `ConfirmPayment` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
-- `ReversePayment` with FastAPI, SQLite, RabbitMQ publisher, and consumer.
-- Unit and API tests for both services.
-- Docker Compose with RabbitMQ and persistent volumes.
-
-Pending:
-
-- Projection of `account.created` into `debit_account_service`.
-- Account administration endpoints beyond creation.
-- Outbox pattern for transactional event publishing.
-- Next saga services: confirmation, reversal, notifications, and receipt.
-
-<!--
-
-Sim, com uma ressalva importante.
-
-O projeto usa:
-
-Event-driven architecture: sim. Os serviços se comunicam por eventos RabbitMQ, como payment.started, debit.completed, payment.confirmed, merchant.notified, customer.notified, receipt.issued.
-
-Ports and Adapters / Hexagonal Architecture: sim. Os serviços seguem domain, application/ports, application/services e adapters para API, mensageria e persistência.
-
-Saga pattern: sim. O fluxo de pagamento é uma saga distribuída por eventos: start payment, debit account, confirm payment, reverse payment em falha, notify merchant/customer e issue receipt.
-
-Idempotency: sim, parcialmente e de forma explícita em vários pontos. Exemplos:
-
-notificações por transaction_id + merchant_id ou transaction_id + customer_id
-recibo por transaction_id
-projeções de pagamento por transaction_id
-consumidores evitam duplicar processamento em alguns casos
-Mensageria com RabbitMQ: sim. O projeto usa RabbitMQ com exchange topic payments e consumers dedicados no Docker Compose.
-
-Outbox pattern: não ainda. Hoje os serviços persistem no SQLite e publicam no RabbitMQ diretamente no mesmo caso de uso, mas sem tabela outbox, relay/poller, marcação de eventos publicados ou garantia transacional entre banco e broker.
-
-Resumo: o projeto usa todas as técnicas listadas, exceto Outbox Pattern, que ainda está pendente.
-
--->
+- Project `account.created` into `debit_account_service` automatically.
+- Expand account administration endpoints beyond account creation.

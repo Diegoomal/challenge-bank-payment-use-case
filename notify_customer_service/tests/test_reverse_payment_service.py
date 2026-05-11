@@ -9,6 +9,7 @@ from application.schemas import NotifyCustomerCommand
 from application.services.notify_customer_service import NotifyCustomerService
 from domain.delivery_status import DeliveryStatus
 from domain.notification_channel import NotificationChannel
+from domain.notification_type import NotificationType
 
 
 class InMemoryNotificationRepository:
@@ -21,13 +22,22 @@ class InMemoryNotificationRepository:
     def get_by_id(self, notification_id):
         return self.notifications.get(notification_id)
 
-    def get_by_transaction_and_customer(self, transaction_id, customer_id):
+    def get_by_transaction_and_customer(
+        self,
+        transaction_id,
+        customer_id,
+        notification_type=None,
+    ):
         return next(
             (
                 notification
                 for notification in self.notifications.values()
                 if notification.transaction_id == transaction_id
                 and notification.customer_id == customer_id
+                and (
+                    notification_type is None
+                    or notification.notification_type == notification_type
+                )
             ),
             None,
         )
@@ -61,6 +71,39 @@ def test_notify_customer_delivers_notification_and_publishes_event():
     assert len(gateway.sent_notifications) == 1
     assert len(publisher.customer_notified_events) == 1
     assert publisher.customer_notified_events[0].event_name == "CustomerNotified"
+    assert (
+        publisher.customer_notified_events[0].notification_type
+        == "PAYMENT_CONFIRMED"
+    )
+
+
+def test_notify_customer_delivers_reversal_notification():
+    repository = InMemoryNotificationRepository()
+    gateway = InMemoryNotificationGateway()
+    publisher = InMemoryEventPublisher()
+    service = NotifyCustomerService(repository, gateway, publisher)
+
+    result = service.notify_customer(
+        NotifyCustomerCommand(
+            transaction_id="transaction-1",
+            merchant_id="merchant-1",
+            customer_id="customer-1",
+            amount=Decimal("50.00"),
+            confirmed_at=datetime.now(timezone.utc),
+            notification_type=NotificationType.PAYMENT_REVERSED,
+            recipient="customer@example.com",
+            channel=NotificationChannel.PUSH,
+        )
+    )
+
+    assert result.status == DeliveryStatus.DELIVERED
+    assert result.notification_type == NotificationType.PAYMENT_REVERSED
+    assert len(gateway.sent_notifications) == 1
+    assert len(publisher.customer_notified_events) == 1
+    assert (
+        publisher.customer_notified_events[0].notification_type
+        == "PAYMENT_REVERSED"
+    )
 
 
 def test_notify_customer_is_idempotent_when_already_delivered():
@@ -81,6 +124,7 @@ def test_notify_customer_is_idempotent_when_already_delivered():
     second = service.notify_customer(command)
 
     assert second.notification_id == first.notification_id
+    assert second.notification_type == NotificationType.PAYMENT_CONFIRMED
     assert len(gateway.sent_notifications) == 1
     assert len(publisher.customer_notified_events) == 1
 

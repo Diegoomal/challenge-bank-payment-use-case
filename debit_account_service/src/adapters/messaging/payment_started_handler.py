@@ -25,6 +25,7 @@ class PaymentStartedHandler:
             DebitAccountCommand(
                 transaction_id=message.transaction_id,
                 customer_id=message.customer_id,
+                merchant_id=message.merchant_id,
                 amount=message.amount,
             )
         )

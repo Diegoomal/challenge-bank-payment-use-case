@@ -8,6 +8,7 @@ from domain.debit_status import DebitStatus
 class DebitAccountCommand:
     transaction_id: str
     customer_id: str
+    merchant_id: str
     amount: Decimal
 
 

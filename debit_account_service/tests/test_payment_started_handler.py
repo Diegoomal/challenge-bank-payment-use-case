@@ -35,6 +35,7 @@ def test_payment_started_handler_converts_event_to_debit_command():
 
     assert debit_account.command.transaction_id == "transaction-1"
     assert debit_account.command.customer_id == "customer-1"
+    assert debit_account.command.merchant_id == "merchant-1"
     assert debit_account.command.amount == Decimal("50.00")
 
 

@@ -54,17 +54,19 @@ def test_rabbitmq_saga_consumer_parses_payment_started_payload():
     assert message.amount == Decimal("10.00")
 
 
-def test_rabbitmq_saga_consumer_parses_debit_completed_payload():
+def test_rabbitmq_saga_consumer_parses_credit_completed_payload():
     payload = {
         "transaction_id": "transaction-1",
         "account_id": "account-1",
         "customer_id": "customer-1",
+        "merchant_id": "merchant-1",
         "amount": "10.00",
-        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "credited_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    message = RabbitMQSagaConsumer._debit_completed_from_payload(payload)
+    message = RabbitMQSagaConsumer._credit_completed_from_payload(payload)
 
     assert message.transaction_id == "transaction-1"
     assert message.account_id == "account-1"
+    assert message.merchant_id == "merchant-1"
     assert message.amount == Decimal("10.00")

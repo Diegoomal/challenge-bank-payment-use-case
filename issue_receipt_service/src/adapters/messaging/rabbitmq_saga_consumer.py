@@ -4,6 +4,8 @@ from decimal import Decimal
 
 import pika
 
+from observability.messaging import begin_message
+
 from adapters.messaging.saga_event_handler import (
     PaymentConfirmedMessage,
     SagaEventHandler,
@@ -48,6 +50,7 @@ class RabbitMQSagaConsumer:
     def _handle_message(self, channel, method, properties, body) -> None:
         try:
             payload = json.loads(body.decode("utf-8"))
+            begin_message(payload, method.routing_key)
             if method.routing_key == "payment.confirmed":
                 self.handler.handle_payment_confirmed(
                     self._payment_confirmed_from_payload(payload)

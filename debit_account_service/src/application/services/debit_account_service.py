@@ -54,6 +54,7 @@ class DebitAccountService(ForDebitingAccount):
                 transaction_id=command.transaction_id,
                 account_id=account.id,
                 customer_id=account.customer_id,
+                merchant_id=command.merchant_id,
                 amount=command.amount,
                 occurred_at=datetime.now(timezone.utc),
             )
@@ -69,6 +70,7 @@ class DebitAccountService(ForDebitingAccount):
             DebitFailed(
                 transaction_id=command.transaction_id,
                 customer_id=command.customer_id,
+                merchant_id=command.merchant_id,
                 amount=command.amount,
                 reason=reason,
                 occurred_at=datetime.now(timezone.utc),

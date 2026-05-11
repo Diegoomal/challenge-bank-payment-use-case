@@ -20,6 +20,7 @@ def create_notification_router(notify_customer: ForNotifyingCustomer) -> APIRout
                     customer_id=request.customer_id,
                     amount=request.amount,
                     confirmed_at=request.confirmed_at,
+                    notification_type=request.notification_type,
                     recipient=request.recipient,
                     channel=request.channel,
                 )
@@ -33,6 +34,7 @@ def create_notification_router(notify_customer: ForNotifyingCustomer) -> APIRout
             notification_id=result.notification_id,
             transaction_id=result.transaction_id,
             customer_id=result.customer_id,
+            notification_type=result.notification_type,
             status=result.status,
             notified_at=result.notified_at,
         )

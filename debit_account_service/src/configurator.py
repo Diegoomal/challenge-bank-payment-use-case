@@ -1,11 +1,13 @@
 import os
 
 from fastapi import FastAPI
+from observability.fastapi import configure_observability
+from observability.logging import configure_logging
 
 from adapters.api.routes import create_account_router
 from adapters.messaging.in_memory_event_publisher import InMemoryEventPublisher
 from adapters.messaging.payment_started_handler import PaymentStartedHandler
-from adapters.messaging.rabbitmq_event_publisher import RabbitMQEventPublisher
+from adapters.messaging.outbox_event_publisher import OutboxEventPublisher
 from adapters.messaging.rabbitmq_payment_started_consumer import (
     RabbitMQPaymentStartedConsumer,
 )
@@ -18,7 +20,7 @@ from application.services.debit_account_service import DebitAccountService
 def configure_event_publisher(rabbitmq_url: str | None = None) -> EventPublisher:
     rabbitmq_url = rabbitmq_url or os.getenv("RABBITMQ_URL")
     if rabbitmq_url:
-        return RabbitMQEventPublisher(rabbitmq_url)
+        return OutboxEventPublisher()
     return InMemoryEventPublisher()
 
 
@@ -56,6 +58,14 @@ def create_app(
     rabbitmq_url: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Debit Account Service")
+    configure_logging()
+    configure_observability(
+        app,
+        os.getenv(
+            "OTEL_SERVICE_NAME",
+            "Debit Account Service".lower().replace(" ", "_"),
+        ),
+    )
     app.include_router(
         create_account_router(configure_debit_account(database_path, rabbitmq_url))
     )

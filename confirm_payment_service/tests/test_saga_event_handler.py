@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from adapters.messaging.in_memory_event_publisher import InMemoryEventPublisher
 from adapters.messaging.saga_event_handler import (
-    DebitCompletedMessage,
+    CreditCompletedMessage,
     PaymentStartedMessage,
     SagaEventHandler,
 )
@@ -22,7 +22,7 @@ class InMemoryTransactionRepository:
         return self.transactions.get(transaction_id)
 
 
-def test_saga_handler_projects_payment_started_and_confirms_debit_completed():
+def test_saga_handler_projects_payment_started_and_confirms_credit_completed():
     repository = InMemoryTransactionRepository()
     publisher = InMemoryEventPublisher()
     service = ConfirmPaymentService(repository, publisher)
@@ -38,13 +38,14 @@ def test_saga_handler_projects_payment_started_and_confirms_debit_completed():
             occurred_at=datetime.now(timezone.utc),
         )
     )
-    result = handler.handle_debit_completed(
-        DebitCompletedMessage(
+    result = handler.handle_credit_completed(
+        CreditCompletedMessage(
             transaction_id="transaction-1",
             account_id="account-1",
             customer_id="customer-1",
+            merchant_id="merchant-1",
             amount=Decimal("50.00"),
-            occurred_at=datetime.now(timezone.utc),
+            credited_at=datetime.now(timezone.utc),
         )
     )
 
