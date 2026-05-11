@@ -1,42 +1,88 @@
 # Credit Account Service Setup
+This document explains how to prepare the local environment, install
+dependencies, run the service, and execute checks.
 
-This guide runs `credit_account_service` locally as part of the Bitbank saga.
+## Requirements
 
-## Docker Compose
+The project uses Python 3.10. The recommended environment is described in
+`env.yml` and installs the dependencies listed in `requirements.txt`.
 
-From the repository root:
+Expected tools:
+
+- Conda or Mamba, recommended;
+- Python 3.10, if using a virtual environment without Conda;
+- `make`, for the `Makefile` shortcuts;
+- Docker and Docker Compose, when running the full stack.
+
+Runtime dependencies include:
+
+- FastAPI, used by the HTTP driving adapter;
+- Uvicorn, used to run the FastAPI application;
+- Pika, used by the RabbitMQ messaging adapter;
+- a SQLite dependency through `aiosqlite` for future async adapters, plus
+  Python's built-in `sqlite3` module used by the current synchronous adapter.
+
+## Conda Environment
+
+Create environment using `env.yml`:
 
 ```bash
-docker compose up -d --build credit_account_service credit_account_consumer credit_account_outbox
+conda env create -n credit-account-service-env -f env.yml
+conda activate credit-account-service-env
 ```
 
-The service listens on:
+## Run The Service
+
+Use the `Makefile` target:
+
+```bash
+make run
+```
+
+This service exposes the FastAPI application on port `8004` when run directly:
+
+```bash
+PYTHONPATH=src uvicorn main:app --host 0.0.0.0 --port 8004
+```
+
+You can also run it manually with reload enabled:
+
+```bash
+PYTHONPATH=src uvicorn main:app --reload --port 8004
+```
+
+## Run Consumers And Workers
+
+Run the RabbitMQ consumer manually:
+
+```bash
+PYTHONPATH=src python src/consumer.py
+```
+
+Run the outbox worker manually:
+
+```bash
+PYTHONPATH=src python src/outbox_worker.py
+```
+
+## Environment Variables
+
+Supported variables:
+
+- `DATABASE_PATH`: SQLite database path. Default: `credit_account.db`.
+- `RABBITMQ_URL`: RabbitMQ connection URL. When unset, the service uses the
+  in-memory event publisher.
+
+Docker Compose sets:
 
 ```text
-http://localhost:8008/accounts/credit
+DATABASE_PATH=/data/credit_account.db
+RABBITMQ_URL=amqp://bitbank:bitbank@rabbitmq:5672/%2F
 ```
 
-## Seed A Merchant Account
+## HTTP API
 
-```bash
-docker compose exec credit_account_service python - <<'PY'
-from decimal import Decimal
-
-from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository
-from domain.account import Account
-
-repository = SQLiteAccountRepository('/data/credit_account.db')
-account = Account.create(
-    customer_id='merchant-1',
-    holder_name='Merchant One',
-    balance=Decimal('0.00'),
-)
-repository.save(account)
-print(account.id)
-PY
-```
-
-## Manual Credit Call
+Credit a merchant account:
 
 ```bash
 curl -X POST http://localhost:8008/accounts/credit \
@@ -49,8 +95,123 @@ curl -X POST http://localhost:8008/accounts/credit \
   }'
 ```
 
-## Tests
+Expected response:
+
+```json
+{
+  "account_id": "...",
+  "transaction_id": "transaction-1",
+  "status": "COMPLETED",
+  "reason": null
+}
+```
+
+## Docker
+
+From the repository root, run:
+
+```bash
+docker compose up -d --build credit_account_service credit_account_consumer credit_account_outbox
+```
+
+The root `docker-compose.yml` exposes this service on port `8008` and stores
+the SQLite database in the `credit_account_data` volume.
+
+RabbitMQ Management is available at:
+
+```text
+http://localhost:15672
+user: bitbank
+password: bitbank
+```
+
+## Seed A Merchant Account
+
+```bash
+docker compose exec credit_account_service python - <<'PY'
+from decimal import Decimal
+
+from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository
+from domain.account import Account
+
+repository = SQLiteAccountRepository("/data/credit_account.db")
+account = Account.create(
+    customer_id="merchant-1",
+    holder_name="Merchant One",
+    balance=Decimal("0.00"),
+)
+repository.save(account)
+print(account.id)
+PY
+```
+
+## Run Tests
+
+Execute:
+
+```bash
+make test
+```
+
+Or run `pytest` directly:
 
 ```bash
 pytest
 ```
+
+The `pytest.ini` file configures `pythonpath = src`, so manually exporting
+`PYTHONPATH` is not necessary for tests.
+
+## Run Lint
+
+Execute:
+
+```bash
+make lint
+```
+
+This command runs:
+
+```bash
+flake8 src tests
+```
+
+## Run All Checks
+
+Execute:
+
+```bash
+make check
+```
+
+This target runs lint and tests:
+
+```bash
+make lint
+make test
+```
+
+## Generate Documentation
+
+Execute:
+
+```bash
+make docs
+```
+
+This command uses `pdoc` to generate documentation in `docs/`:
+
+```bash
+PYTHONPATH=src pdoc configurator domain application adapters -o docs
+```
+
+## Recommended Development Flow
+
+1. Activate the environment.
+2. Define or update ports before concrete adapters.
+3. Keep account credit rules in the domain or application service.
+4. Implement SQLite persistence behind the repository port.
+5. Publish domain events through `EventPublisher`.
+6. Expose HTTP behavior through FastAPI adapters.
+7. Run `make test`.
+8. Run `make lint` when changing imports, formatting, or adding files.

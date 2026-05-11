@@ -1,7 +1,6 @@
 # Start Payment Service Setup
-
 This document explains how to prepare the local environment, install
-dependencies, run the current scaffold, and execute checks.
+dependencies, run the service, and execute checks.
 
 ## Requirements
 
@@ -12,22 +11,27 @@ Expected tools:
 
 - Conda or Mamba, recommended;
 - Python 3.10, if using a virtual environment without Conda;
-- `make`, for the `Makefile` shortcuts.
+- `make`, for the `Makefile` shortcuts;
+- Docker and Docker Compose, when running the full stack.
 
 Runtime dependencies include:
 
-- FastAPI, planned for the HTTP driving adapter;
-- a SQLite dependency through `aiosqlite`, plus Python's built-in `sqlite3`
-  module when synchronous access is enough.
+- FastAPI, used by the HTTP driving adapter;
+- Uvicorn, used to run the FastAPI application;
+- Pika, used by the RabbitMQ messaging adapter;
+- a SQLite dependency through `aiosqlite` for future async adapters, plus
+  Python's built-in `sqlite3` module used by the current synchronous adapter.
 
 ## Conda Environment
+
+Create environment using `env.yml`:
 
 ```bash
 conda env create -n start-payment-service-env -f env.yml
 conda activate start-payment-service-env
 ```
 
-## Run The Current Scaffold
+## Run The Service
 
 Use the `Makefile` target:
 
@@ -35,25 +39,86 @@ Use the `Makefile` target:
 make run
 ```
 
-This command runs:
+This service exposes the FastAPI application on port `8000` when run directly:
 
 ```bash
-PYTHONPATH=src python3 src/main.py
+PYTHONPATH=src uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-The current script still runs the template example. It should be replaced by the
-payment start entry point when the service is implemented.
-
-## Future FastAPI Execution
-
-When the HTTP adapter is implemented, the expected local command is:
+You can also run it manually with reload enabled:
 
 ```bash
-uvicorn src.main:app --reload
+PYTHONPATH=src uvicorn main:app --reload --port 8000
 ```
 
-Add `uvicorn` to `requirements.txt` when the FastAPI application object is
-introduced.
+The current `Makefile` may still point to the older script entry point; the FastAPI command above matches the implemented service and Dockerfile.
+
+## Run Consumers And Workers
+
+Run the outbox worker manually:
+
+```bash
+PYTHONPATH=src python src/outbox_worker.py
+```
+
+## Environment Variables
+
+Supported variables:
+
+- `DATABASE_PATH`: SQLite database path. Default: `start_payment.db`.
+- `RABBITMQ_URL`: RabbitMQ connection URL. When unset, the service uses the
+  in-memory event publisher.
+
+Docker Compose sets:
+
+```text
+DATABASE_PATH=/data/start_payment.db
+RABBITMQ_URL=amqp://bitbank:bitbank@rabbitmq:5672/%2F
+```
+
+## HTTP API
+
+Start a payment:
+
+```bash
+curl -X POST http://localhost:8000/payments/start \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "customer-1",
+    "merchant_id": "merchant-1",
+    "amount": "50.00",
+    "payment_method": "ACCOUNT_BALANCE"
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "transaction_id": "...",
+  "status": "STARTED",
+  "created_at": "..."
+}
+```
+
+## Docker
+
+From the repository root, run:
+
+```bash
+docker compose up -d --build start_payment_service start_payment_outbox
+```
+
+The root `docker-compose.yml` exposes this service on port `8000` and stores
+the SQLite database in the `start_payment_data` volume.
+
+RabbitMQ Management is available at:
+
+```text
+http://localhost:15672
+user: bitbank
+password: bitbank
+```
 
 ## Run Tests
 
@@ -118,9 +183,10 @@ PYTHONPATH=src pdoc configurator domain application adapters -o docs
 ## Recommended Development Flow
 
 1. Activate the environment.
-2. Replace template user code with payment start domain code.
-3. Define ports before concrete adapters.
-4. Implement SQLite persistence behind a driven port.
-5. Add FastAPI routes as a driving adapter.
-6. Run `make test`.
-7. Run `make lint` when changing imports, formatting, or adding files.
+2. Define or update ports before concrete adapters.
+3. Keep payment start rules in the domain or application service.
+4. Implement SQLite persistence behind the repository port.
+5. Publish domain events through `EventPublisher`.
+6. Expose HTTP behavior through FastAPI adapters.
+7. Run `make test`.
+8. Run `make lint` when changing imports, formatting, or adding files.
