@@ -26,8 +26,8 @@ routing keys, API endpoints, and idempotency rules, see
   event names, routing keys, and transaction IDs.
 - Distributed tracing across FastAPI requests and RabbitMQ saga messages with
   OpenTelemetry and Jaeger.
-- Local orchestration with Docker Compose for services, broker, gateway, and
-  observability tools.
+- Local orchestration with Docker Compose and Kubernetes for services, broker,
+  gateway, and observability tools.
 - Automated tests focused on domain behavior, application use cases, adapters,
   and HTTP APIs.
 
@@ -42,7 +42,7 @@ routing keys, API endpoints, and idempotency rules, see
 | Idempotency | Consumers use business keys such as `transaction_id`, `transaction_id + merchant_id`, and `transaction_id + customer_id + notification_type`. |
 | Outbox pattern | Services persist outgoing events in `outbox_events`; worker containers publish pending events to RabbitMQ. |
 | Local projections | Services that need payment context store their own projection from `payment.started`. |
-| Container orchestration | Docker Compose runs the full local environment with isolated services. |
+| Container orchestration | Docker Compose runs the full local environment, and Kubernetes manifests support local cluster execution. |
 | Structured logs | Services write JSON logs to stdout with `correlation_id`, `trace_id`, `span_id`, `event`, `routing_key`, and `transaction_id`. |
 | Distributed tracing | OpenTelemetry instruments FastAPI and RabbitMQ publish/consume operations; Jaeger displays traces locally. |
 | Metrics | Prometheus scrapes service `/metrics` endpoints and Grafana is available for dashboards. |
@@ -55,7 +55,7 @@ routing keys, API endpoints, and idempotency rules, see
 | HTTP APIs | FastAPI |
 | Messaging | RabbitMQ topic exchange |
 | Persistence | SQLite per service |
-| Containers | Docker and Docker Compose |
+| Containers | Docker, Docker Compose, Kubernetes, Minikube, Kompose |
 | Gateway | Nginx API gateway |
 | Tests | pytest |
 | Quality commands | Make, flake8 configuration |
@@ -190,6 +190,71 @@ RabbitMQ Management UI:
 http://localhost:15672
 user: bitbank
 password: bitbank
+```
+
+## Run Locally With Kubernetes
+
+The project also includes Kubernetes support for running the same local stack in
+Minikube. The manifests in `k8s/generated/` are generated from
+`docker-compose.yml` with Kompose, and the helper script builds the images
+inside Minikube's Docker environment before applying the manifests.
+
+Prerequisites:
+
+```text
+Docker
+Minikube
+kubectl
+Kompose
+```
+
+Start the Kubernetes environment:
+
+```bash
+./scripts/k8s-local-up.sh
+```
+
+The script runs these steps:
+
+```text
+1. starts Minikube with the Docker driver
+2. points Docker commands to Minikube's Docker daemon
+3. builds the Docker Compose images
+4. regenerates manifests under k8s/generated/
+5. applies the manifests with kubectl
+6. lists pods, services, and deployments
+```
+
+Check the workload state:
+
+```bash
+kubectl get pods
+kubectl get services
+kubectl get deployments
+```
+
+Follow logs for a service or worker:
+
+```bash
+kubectl logs -f deployment/start-payment-service
+kubectl logs -f deployment/debit-account-consumer
+kubectl logs -f deployment/confirm-payment-consumer
+```
+
+Expose local UIs or API services with port-forwarding when needed:
+
+```bash
+kubectl port-forward service/api-gateway 8080:8080
+kubectl port-forward service/rabbitmq 15672:15672
+kubectl port-forward service/jaeger 16686:16686
+kubectl port-forward service/prometheus 9090:9090
+kubectl port-forward service/grafana 3000:3000
+```
+
+Stop and remove the Kubernetes resources:
+
+```bash
+./scripts/k8s-local-down.sh
 ```
 
 ## Observability
