@@ -152,6 +152,14 @@ broker, and database integrations.
 
 ## Run Locally
 
+The project can be executed locally in two ways:
+
+- Docker Compose, for the simplest local setup.
+- Kubernetes with Minikube, for a local cluster setup generated from the Compose
+  stack.
+
+### Docker Compose
+
 Start the full environment:
 
 ```bash
@@ -192,7 +200,7 @@ user: bitbank
 password: bitbank
 ```
 
-## Run Locally With Kubernetes
+### Kubernetes
 
 The project also includes Kubernetes support for running the same local stack in
 Minikube. The manifests in `k8s/generated/` are generated from
