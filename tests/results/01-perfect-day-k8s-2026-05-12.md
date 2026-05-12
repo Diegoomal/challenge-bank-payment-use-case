@@ -1,0 +1,296 @@
+# Scenario 01 - Perfect Day - Kubernetes Local
+
+Date: 2026-05-12
+
+Environment:
+- Kubernetes context: `minikube`
+- Entry point: `kubectl port-forward service/api-gateway 8080:8080`
+- Test plan: `tests/plan/01-perfect-day.txt`
+
+Result: PASS
+
+The successful saga completed: account creation, payment start, debit, credit,
+confirmation, merchant notification, customer notification, and receipt issuing.
+
+## Initial Pods
+
+Command:
+
+```bash
+kubectl get pods
+```
+
+Output:
+
+```text
+NAME                                        READY   STATUS    RESTARTS   AGE
+account-outbox-75dfbc9b58-2pldg             1/1     Running   0          4m53s
+account-service-fb6b7bf47-mnhbr             1/1     Running   0          4m53s
+api-gateway-5747cd6bdc-7zll4                1/1     Running   0          4m53s
+confirm-payment-consumer-7d99c5d98d-4mkst   1/1     Running   0          4m53s
+confirm-payment-outbox-6ff5895f64-9525l     1/1     Running   0          4m53s
+confirm-payment-service-65dc4798f8-fwbdk    1/1     Running   0          4m53s
+credit-account-consumer-86f8d775c6-5bbb5    1/1     Running   0          4m53s
+credit-account-outbox-55c6cc8978-gqscz      1/1     Running   0          4m53s
+credit-account-service-799886895f-rgtr4     1/1     Running   0          4m52s
+debit-account-consumer-577f8895b8-bgm44     1/1     Running   0          4m52s
+debit-account-outbox-7cc4ffdfc8-462hs       1/1     Running   0          4m52s
+debit-account-service-7646c7cf8d-gd2xj      1/1     Running   0          4m52s
+grafana-6f86646cb-nnqn6                     1/1     Running   0          4m52s
+issue-receipt-consumer-57f8b77856-przgx     1/1     Running   0          4m52s
+issue-receipt-outbox-79699bc7f8-xcx54       1/1     Running   0          4m51s
+issue-receipt-service-8574cd55f5-7zmks      1/1     Running   0          4m51s
+jaeger-6fd5dcf6dc-hwrq7                     1/1     Running   0          4m51s
+notify-customer-consumer-7bbfb576d4-grx7x   1/1     Running   0          4m51s
+notify-customer-outbox-749c6d58f4-7pg2c     1/1     Running   0          4m50s
+notify-customer-service-9d4897459-762ft     1/1     Running   0          4m50s
+notify-merchant-consumer-64f84c5fb-ntvnl    1/1     Running   0          4m50s
+notify-merchant-outbox-9cf79595d-84dkj      1/1     Running   0          4m50s
+notify-merchant-service-68c76dc495-chpn9    1/1     Running   0          4m49s
+otel-collector-6df87856bb-v552b             1/1     Running   0          4m49s
+prometheus-6b89dcf45-csjhm                  1/1     Running   0          4m49s
+rabbitmq-58494b8f7c-jgw7d                   1/1     Running   0          4m49s
+reverse-payment-consumer-6f84dbd9b-ppjdw    1/1     Running   0          4m49s
+reverse-payment-outbox-7fc467f8d-9cqcj      1/1     Running   0          4m49s
+reverse-payment-service-697dc54cc9-ql7s8    1/1     Running   0          4m48s
+start-payment-outbox-5db66df7cb-68j6v       1/1     Running   0          4m48s
+start-payment-service-6c7695855f-5ms88      1/1     Running   0          4m47s
+```
+
+## Port Forward
+
+Command:
+
+```bash
+kubectl port-forward service/api-gateway 8080:8080
+```
+
+Output:
+
+```text
+Forwarding from 127.0.0.1:8080 -> 80
+Forwarding from [::1]:8080 -> 80
+```
+
+## Preparation
+
+Command:
+
+```bash
+curl -sS -X POST http://localhost:8080/api/v1/accounts \
+  -H 'Content-Type: application/json' \
+  -d '{"customer_id":"scenario-01-customer","account_holder":"Scenario 01 Customer","initial_deposit":"100.00"}'
+```
+
+Output:
+
+```json
+{"account_id":"fc6e137e-a0b8-4324-bdd3-632d259367f9","customer_id":"scenario-01-customer","status":"ACTIVE","created_at":"2026-05-12T12:30:21.126596Z"}
+```
+
+Command:
+
+```bash
+kubectl exec deploy/debit-account-service -- python -c "from decimal import Decimal; from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository; from domain.account import Account; r=SQLiteAccountRepository('/data/debit_account.db'); a=r.get_by_customer_id('scenario-01-customer') or Account.create(customer_id='scenario-01-customer', holder_name='Scenario 01 Customer', balance=Decimal('100.00')); r.save(a); print(a.id, a.customer_id, a.balance)"
+```
+
+Output:
+
+```text
+111baaf7-4139-4c2d-9c2f-d44d0eae1824 scenario-01-customer 100.00
+```
+
+Command:
+
+```bash
+kubectl exec deploy/credit-account-service -- python -c "from decimal import Decimal; from adapters.persistence.sqlite_account_repository import SQLiteAccountRepository; from domain.account import Account; r=SQLiteAccountRepository('/data/credit_account.db'); a=r.get_by_customer_id('scenario-01-merchant') or Account.create(customer_id='scenario-01-merchant', holder_name='Scenario 01 Merchant', balance=Decimal('0.00')); r.save(a); print(a.id, a.customer_id, a.balance)"
+```
+
+Output:
+
+```text
+2f11947b-b5d1-4b8e-aa4b-87f0217517d0 scenario-01-merchant 0.00
+```
+
+## Action
+
+Command:
+
+```bash
+curl -sS -X POST http://localhost:8080/api/v1/payments/start \
+  -H 'Content-Type: application/json' \
+  -d '{"customer_id":"scenario-01-customer","merchant_id":"scenario-01-merchant","amount":"50.00","payment_method":"ACCOUNT_BALANCE"}'
+```
+
+Output:
+
+```json
+{"transaction_id":"6461c38d-deea-40b2-ab03-3bb50121fa6e","status":"STARTED","created_at":"2026-05-12T12:30:57.025287Z"}
+```
+
+Wait:
+
+```bash
+sleep 8
+```
+
+## Verification
+
+Command:
+
+```bash
+kubectl exec deploy/start-payment-service -- python -c "import sqlite3; c=sqlite3.connect('/data/start_payment.db'); print(c.execute('select id, customer_id, merchant_id, amount, status from transactions where customer_id=? order by created_at desc limit 5', ('scenario-01-customer',)).fetchall())"
+```
+
+Output:
+
+```text
+[('6461c38d-deea-40b2-ab03-3bb50121fa6e', 'scenario-01-customer', 'scenario-01-merchant', '50.00', 'STARTED')]
+```
+
+Command:
+
+```bash
+kubectl exec deploy/debit-account-service -- python -c "import sqlite3; c=sqlite3.connect('/data/debit_account.db'); print('accounts=', c.execute('select customer_id, balance from accounts where customer_id=?', ('scenario-01-customer',)).fetchall()); print('entries=', c.execute('select transaction_id, amount, entry_type from accounting_entries order by created_at desc limit 5').fetchall()); print('outbox=', c.execute('select event_name, routing_key, status from outbox_events order by created_at desc limit 5').fetchall())"
+```
+
+Output:
+
+```text
+accounts= [('scenario-01-customer', '50.00')]
+entries= [('6461c38d-deea-40b2-ab03-3bb50121fa6e', '50.00', 'DEBIT')]
+outbox= [('DebitCompleted', 'debit.completed', 'PUBLISHED')]
+```
+
+Command:
+
+```bash
+kubectl exec deploy/credit-account-service -- python -c "import sqlite3; c=sqlite3.connect('/data/credit_account.db'); print('accounts=', c.execute('select customer_id, balance from accounts where customer_id=?', ('scenario-01-merchant',)).fetchall()); print('entries=', c.execute('select transaction_id, amount, entry_type from accounting_entries order by created_at desc limit 5').fetchall()); print('outbox=', c.execute('select event_name, routing_key, status from outbox_events order by created_at desc limit 5').fetchall())"
+```
+
+Output:
+
+```text
+accounts= [('scenario-01-merchant', '50.00')]
+entries= [('6461c38d-deea-40b2-ab03-3bb50121fa6e', '50.00', 'CREDIT')]
+outbox= [('CreditCompleted', 'credit.completed', 'PUBLISHED')]
+```
+
+Command:
+
+```bash
+kubectl exec deploy/confirm-payment-service -- python -c "import sqlite3; c=sqlite3.connect('/data/confirm_payment.db'); print('transactions=', c.execute('select id, merchant_id, status, confirmed_at from transactions where id=? order by updated_at desc limit 5', ('6461c38d-deea-40b2-ab03-3bb50121fa6e',)).fetchall()); print('outbox=', c.execute('select event_name, routing_key, status from outbox_events order by created_at desc limit 5').fetchall())"
+```
+
+Output:
+
+```text
+transactions= [('6461c38d-deea-40b2-ab03-3bb50121fa6e', 'scenario-01-merchant', 'CONFIRMED', '2026-05-12T12:31:00.567368+00:00')]
+outbox= [('PaymentConfirmed', 'payment.confirmed', 'PUBLISHED')]
+```
+
+Note: the original Docker Compose plan queries `customer_id` from `confirm_payment.db`, but the current table schema does not include that column. The verification was adjusted to query by transaction id.
+
+Command:
+
+```bash
+kubectl exec deploy/reverse-payment-service -- python -c "import sqlite3; c=sqlite3.connect('/data/reverse_payment.db'); print(c.execute('select id, customer_id, merchant_id, status, reversal_reason from transactions where customer_id=? order by updated_at desc limit 5', ('scenario-01-customer',)).fetchall())"
+```
+
+Output:
+
+```text
+[('6461c38d-deea-40b2-ab03-3bb50121fa6e', 'scenario-01-customer', 'scenario-01-merchant', 'STARTED', None)]
+```
+
+Command:
+
+```bash
+kubectl exec deploy/notify-merchant-service -- python -c "import sqlite3; c=sqlite3.connect('/data/notify_merchant.db'); print(c.execute('select transaction_id, merchant_id, channel, status from notifications where merchant_id=? order by notified_at desc limit 5', ('scenario-01-merchant',)).fetchall())"
+```
+
+Output:
+
+```text
+[('6461c38d-deea-40b2-ab03-3bb50121fa6e', 'scenario-01-merchant', 'WEBHOOK', 'DELIVERED')]
+```
+
+Command:
+
+```bash
+kubectl exec deploy/notify-customer-service -- python -c "import sqlite3; c=sqlite3.connect('/data/notify_customer.db'); print(c.execute('select transaction_id, customer_id, channel, status from notifications where customer_id=? order by notified_at desc limit 5', ('scenario-01-customer',)).fetchall())"
+```
+
+Output:
+
+```text
+[('6461c38d-deea-40b2-ab03-3bb50121fa6e', 'scenario-01-customer', 'PUSH', 'DELIVERED')]
+```
+
+Command:
+
+```bash
+kubectl exec deploy/issue-receipt-service -- python -c "import sqlite3; c=sqlite3.connect('/data/issue_receipt.db'); print(c.execute('select transaction_id, customer_id, merchant_id, status, issued_at from receipts where customer_id=? order by issued_at desc limit 5', ('scenario-01-customer',)).fetchall())"
+```
+
+Output:
+
+```text
+[('6461c38d-deea-40b2-ab03-3bb50121fa6e', 'scenario-01-customer', 'scenario-01-merchant', 'ISSUED', '2026-05-12T12:31:01.545526+00:00')]
+```
+
+## Final Pods
+
+Command:
+
+```bash
+kubectl get pods
+```
+
+Output:
+
+```text
+NAME                                        READY   STATUS    RESTARTS   AGE
+account-outbox-75dfbc9b58-2pldg             1/1     Running   0          8m33s
+account-service-fb6b7bf47-mnhbr             1/1     Running   0          8m33s
+api-gateway-5747cd6bdc-7zll4                1/1     Running   0          8m33s
+confirm-payment-consumer-7d99c5d98d-4mkst   1/1     Running   0          8m33s
+confirm-payment-outbox-6ff5895f64-9525l     1/1     Running   0          8m33s
+confirm-payment-service-65dc4798f8-fwbdk    1/1     Running   0          8m33s
+credit-account-consumer-86f8d775c6-5bbb5    1/1     Running   0          8m33s
+credit-account-outbox-55c6cc8978-gqscz      1/1     Running   0          8m33s
+credit-account-service-799886895f-rgtr4     1/1     Running   0          8m32s
+debit-account-consumer-577f8895b8-bgm44     1/1     Running   0          8m32s
+debit-account-outbox-7cc4ffdfc8-462hs       1/1     Running   0          8m32s
+debit-account-service-7646c7cf8d-gd2xj      1/1     Running   0          8m32s
+grafana-6f86646cb-nnqn6                     1/1     Running   0          8m32s
+issue-receipt-consumer-57f8b77856-przgx     1/1     Running   0          8m32s
+issue-receipt-outbox-79699bc7f8-xcx54       1/1     Running   0          8m31s
+issue-receipt-service-8574cd55f5-7zmks      1/1     Running   0          8m31s
+jaeger-6fd5dcf6dc-hwrq7                     1/1     Running   0          8m31s
+notify-customer-consumer-7bbfb576d4-grx7x   1/1     Running   0          8m31s
+notify-customer-outbox-749c6d58f4-7pg2c     1/1     Running   0          8m30s
+notify-customer-service-9d4897459-762ft     1/1     Running   0          8m30s
+notify-merchant-consumer-64f84c5fb-ntvnl    1/1     Running   0          8m30s
+notify-merchant-outbox-9cf79595d-84dkj      1/1     Running   0          8m30s
+notify-merchant-service-68c76dc495-chpn9    1/1     Running   0          8m29s
+otel-collector-6df87856bb-v552b             1/1     Running   0          8m29s
+prometheus-6b89dcf45-csjhm                  1/1     Running   0          8m29s
+rabbitmq-58494b8f7c-jgw7d                   1/1     Running   0          8m29s
+reverse-payment-consumer-6f84dbd9b-ppjdw    1/1     Running   0          8m29s
+reverse-payment-outbox-7fc467f8d-9cqcj      1/1     Running   0          8m29s
+reverse-payment-service-697dc54cc9-ql7s8    1/1     Running   0          8m28s
+start-payment-outbox-5db66df7cb-68j6v       1/1     Running   0          8m28s
+start-payment-service-6c7695855f-5ms88      1/1     Running   0          8m27s
+```
+
+## Expected Behavior Check
+
+- `start-payment-service` has a `STARTED` transaction: PASS
+- `debit-account-service` debited `50.00` and published `debit.completed`: PASS
+- `credit-account-service` credited `50.00` and published `credit.completed`: PASS
+- `confirm-payment-service` confirmed the transaction and published `payment.confirmed`: PASS
+- `reverse-payment-service` did not reverse the transaction: PASS
+- `notify-merchant-service` has a `DELIVERED` notification: PASS
+- `notify-customer-service` has a `DELIVERED` notification: PASS
+- `issue-receipt-service` has an `ISSUED` receipt: PASS

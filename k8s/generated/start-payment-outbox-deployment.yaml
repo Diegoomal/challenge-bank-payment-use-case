@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml -o k8s/generated/
+    kompose.version: 1.38.0 (a8f5d1cbd)
+  labels:
+    io.kompose.service: start-payment-outbox
+  name: start-payment-outbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: start-payment-outbox
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml -o k8s/generated/
+        kompose.version: 1.38.0 (a8f5d1cbd)
+      labels:
+        io.kompose.service: start-payment-outbox
+    spec:
+      containers:
+        - args:
+            - python
+            - outbox_worker.py
+          env:
+            - name: DATABASE_PATH
+              value: /data/start_payment.db
+            - name: LOG_LEVEL
+              value: INFO
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4318
+            - name: OTEL_SERVICE_NAME
+              value: start-payment-outbox
+            - name: RABBITMQ_URL
+              value: amqp://challenge:challenge@rabbitmq:5672/%2F
+          image: start-payment-outbox:latest
+          imagePullPolicy: IfNotPresent
+          name: start-payment-outbox
+          volumeMounts:
+            - mountPath: /data
+              name: start-payment-data
+      restartPolicy: Always
+      volumes:
+        - name: start-payment-data
+          persistentVolumeClaim:
+            claimName: start-payment-data

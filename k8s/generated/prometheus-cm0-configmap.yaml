@@ -1,0 +1,41 @@
+apiVersion: v1
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 5s
+
+    scrape_configs:
+      - job_name: account-service
+        static_configs:
+          - targets: ["account-service:8002"]
+      - job_name: start-payment-service
+        static_configs:
+          - targets: ["start-payment-service:8000"]
+      - job_name: debit-account-service
+        static_configs:
+          - targets: ["debit-account-service:8001"]
+      - job_name: credit-account-service
+        static_configs:
+          - targets: ["credit-account-service:8004"]
+      - job_name: confirm-payment-service
+        static_configs:
+          - targets: ["confirm-payment-service:8003"]
+      - job_name: reverse-payment-service
+        static_configs:
+          - targets: ["reverse-payment-service:8004"]
+      - job_name: notify-merchant-service
+        static_configs:
+          - targets: ["notify-merchant-service:8004"]
+      - job_name: notify-customer-service
+        static_configs:
+          - targets: ["notify-customer-service:8004"]
+      - job_name: issue-receipt-service
+        static_configs:
+          - targets: ["issue-receipt-service:8000"]
+kind: ConfigMap
+metadata:
+  annotations:
+    use-subpath: "true"
+  labels:
+    io.kompose.service: prometheus
+  name: prometheus-cm0

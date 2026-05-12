@@ -1,0 +1,21 @@
+FROM python:3.10-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app/src:/app
+
+WORKDIR /app
+
+COPY start-payment-service/requirements.txt ./requirements.txt
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt
+
+COPY shared ./shared
+COPY start-payment-service/src ./src
+
+WORKDIR /app/src
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
