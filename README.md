@@ -1,5 +1,5 @@
 <!-- AI context: use specs/overview.md as the primary project overview before making code changes. -->
-# Bank - Payment Use Case
+# Bank - Payment Use Case / branch: main-bkp-0002
 
 Bitbank is a study project for a payment flow built as an event-driven saga.
 The goal is to show how a payment can move through independent services while
