@@ -1,10 +1,11 @@
 services:
+
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: bitbank_rabbitmq
+    container_name: rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: bitbank
-      RABBITMQ_DEFAULT_PASS: bitbank
+      RABBITMQ_DEFAULT_USER: challenge
+      RABBITMQ_DEFAULT_PASS: challenge
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -19,16 +20,16 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.63.0
-    container_name: bitbank_jaeger
+    container_name: jaeger
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     ports:
       - "16686:16686"
     restart: unless-stopped
 
-  otel_collector:
+  otel-collector:
     image: otel/opentelemetry-collector-contrib:0.114.0
-    container_name: bitbank_otel_collector
+    container_name: otel-collector
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./observability/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
@@ -41,7 +42,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.55.1
-    container_name: bitbank_prometheus
+    container_name: prometheus
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
@@ -50,10 +51,10 @@ services:
 
   grafana:
     image: grafana/grafana:11.3.1
-    container_name: bitbank_grafana
+    container_name: grafana
     environment:
-      GF_SECURITY_ADMIN_USER: bitbank
-      GF_SECURITY_ADMIN_PASSWORD: bitbank
+      GF_SECURITY_ADMIN_USER: challenge
+      GF_SECURITY_ADMIN_PASSWORD: challenge
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana_data:/var/lib/grafana
@@ -64,35 +65,36 @@ services:
       - jaeger
     restart: unless-stopped
 
-  api_gateway:
+  api-gateway:
     image: nginx:alpine
-    container_name: bitbank_api_gateway
+    container_name: api-gateway
     ports:
       - "8080:80"
     volumes:
-      - ./api_gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./api-gateway/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - account_service
-      - start_payment_service
-      - debit_account_service
-      - credit_account_service
-      - confirm_payment_service
-      - reverse_payment_service
-      - notify_merchant_service
-      - notify_customer_service
-      - issue_receipt_service
+      - account-service
+      - start-payment-service
+      - debit-account-service
+      - credit-account-service
+      - confirm-payment-service
+      - reverse-payment-service
+      - notify-merchant-service
+      - notify-customer-service
+      - issue-receipt-service
     restart: unless-stopped
 
-  account_service:
+  account-service:
+    image: account-service:latest
     build:
       context: .
-      dockerfile: account_service/dockerfile
-    container_name: bitbank_account_service
+      dockerfile: account-service/dockerfile
+    container_name: account-service
     environment:
       DATABASE_PATH: /data/account.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: account_service
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: account-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     ports:
       - "8002:8002"
@@ -103,16 +105,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  start_payment_service:
+  start-payment-service:
+    image: start-payment-service:latest
     build:
       context: .
-      dockerfile: start_payment_service/dockerfile
-    container_name: bitbank_start_payment_service
+      dockerfile: start-payment-service/dockerfile
+    container_name: start-payment-service
     environment:
       DATABASE_PATH: /data/start_payment.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: start_payment_service
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: start-payment-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     ports:
       - "8000:8000"
@@ -123,16 +126,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  debit_account_service:
+  debit-account-service:
+    image: debit-account-service:latest
     build:
       context: .
-      dockerfile: debit_account_service/dockerfile
-    container_name: bitbank_debit_account_service
+      dockerfile: debit-account-service/dockerfile
+    container_name: debit-account-service
     environment:
       DATABASE_PATH: /data/debit_account.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: debit_account_service
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: debit-account-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     ports:
       - "8001:8001"
@@ -143,16 +147,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  credit_account_service:
+  credit-account-service:
+    image: credit-account-service:latest
     build:
       context: .
-      dockerfile: credit_account_service/dockerfile
-    container_name: bitbank_credit_account_service
+      dockerfile: credit-account-service/dockerfile
+    container_name: credit-account-service
     environment:
       DATABASE_PATH: /data/credit_account.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: credit_account_service
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: credit-account-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     ports:
       - "8008:8004"
@@ -163,16 +168,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
   
-  confirm_payment_service:
+  confirm-payment-service:
+    image: confirm-payment-service:latest
     build:
       context: .
-      dockerfile: confirm_payment_service/dockerfile
-    container_name: bitbank_confirm_payment_service
+      dockerfile: confirm-payment-service/dockerfile
+    container_name: confirm-payment-service
     environment:
       DATABASE_PATH: /data/confirm_payment.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: confirm_payment_service
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: confirm-payment-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     ports:
       - "8003:8003"
@@ -183,16 +189,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  reverse_payment_service:
+  reverse-payment-service:
+    image: reverse-payment-service:latest
     build:
       context: .
-      dockerfile: reverse_payment_service/dockerfile
-    container_name: bitbank_reverse_payment_service
+      dockerfile: reverse-payment-service/dockerfile
+    container_name: reverse-payment-service
     environment:
       DATABASE_PATH: /data/reverse_payment.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: reverse_payment_service
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: reverse-payment-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     ports:
       - "8004:8004"
@@ -203,17 +210,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  reverse_payment_consumer:
+  reverse-payment-consumer:
+    image: reverse-payment-consumer:latest
     build:
       context: .
-      dockerfile: reverse_payment_service/dockerfile
-    container_name: bitbank_reverse_payment_consumer
+      dockerfile: reverse-payment-service/dockerfile
+    container_name: reverse-payment-consumer
     command: ["python", "consumer.py"]
     environment:
       DATABASE_PATH: /data/reverse_payment.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: reverse_payment_consumer
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: reverse-payment-consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - reverse_payment_data:/data
@@ -222,17 +230,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  confirm_payment_consumer:
+  confirm-payment-consumer:
+    image: confirm-payment-consumer:latest
     build:
       context: .
-      dockerfile: confirm_payment_service/dockerfile
-    container_name: bitbank_confirm_payment_consumer
+      dockerfile: confirm-payment-service/dockerfile
+    container_name: confirm-payment-consumer
     command: ["python", "consumer.py"]
     environment:
       DATABASE_PATH: /data/confirm_payment.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: confirm_payment_consumer
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: confirm-payment-consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - confirm_payment_data:/data
@@ -241,17 +250,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  debit_account_consumer:
+  debit-account-consumer:
+    image: debit-account-consumer:latest
     build:
       context: .
-      dockerfile: debit_account_service/dockerfile
-    container_name: bitbank_debit_account_consumer
+      dockerfile: debit-account-service/dockerfile
+    container_name: debit-account-consumer
     command: ["python", "consumer.py"]
     environment:
       DATABASE_PATH: /data/debit_account.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: debit_account_consumer
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: debit-account-consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - debit_account_data:/data
@@ -260,17 +270,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  credit_account_consumer:
+  credit-account-consumer:
+    image: credit-account-consumer:latest
     build:
       context: .
-      dockerfile: credit_account_service/dockerfile
-    container_name: bitbank_credit_account_consumer
+      dockerfile: credit-account-service/dockerfile
+    container_name: credit-account-consumer
     command: ["python", "consumer.py"]
     environment:
       DATABASE_PATH: /data/credit_account.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: credit_account_consumer
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: credit-account-consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - credit_account_data:/data
@@ -279,17 +290,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  account_outbox:
+  account-outbox:
+    image: account-outbox:latest
     build:
       context: .
-      dockerfile: account_service/dockerfile
-    container_name: bitbank_account_outbox
+      dockerfile: account-service/dockerfile
+    container_name: account-outbox
     command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/account.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: account_outbox
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: account-outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - account_data:/data
@@ -298,17 +310,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  start_payment_outbox:
+  start-payment-outbox:
+    image: start-payment-outbox:latest
     build:
       context: .
-      dockerfile: start_payment_service/dockerfile
-    container_name: bitbank_start_payment_outbox
+      dockerfile: start-payment-service/dockerfile
+    container_name: start-payment-outbox
     command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/start_payment.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: start_payment_outbox
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: start-payment-outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - start_payment_data:/data
@@ -317,17 +330,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  debit_account_outbox:
+  debit-account-outbox:
+    image: debit-account-outbox:latest
     build:
       context: .
-      dockerfile: debit_account_service/dockerfile
-    container_name: bitbank_debit_account_outbox
+      dockerfile: debit-account-service/dockerfile
+    container_name: debit-account-outbox
     command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/debit_account.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: debit_account_outbox
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: debit-account-outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - debit_account_data:/data
@@ -336,17 +350,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  credit_account_outbox:
+  credit-account-outbox:
+    image: credit-account-outbox:latest
     build:
       context: .
-      dockerfile: credit_account_service/dockerfile
-    container_name: bitbank_credit_account_outbox
+      dockerfile: credit-account-service/dockerfile
+    container_name: credit-account-outbox
     command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/credit_account.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: credit_account_outbox
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: credit-account-outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - credit_account_data:/data
@@ -355,17 +370,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  confirm_payment_outbox:
+  confirm-payment-outbox:
+    image: confirm-payment-outbox:latest
     build:
       context: .
-      dockerfile: confirm_payment_service/dockerfile
-    container_name: bitbank_confirm_payment_outbox
+      dockerfile: confirm-payment-service/dockerfile
+    container_name: confirm-payment-outbox
     command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/confirm_payment.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: confirm_payment_outbox
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: confirm-payment-outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - confirm_payment_data:/data
@@ -374,17 +390,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  reverse_payment_outbox:
+  reverse-payment-outbox:
+    image: reverse-payment-outbox:latest
     build:
       context: .
-      dockerfile: reverse_payment_service/dockerfile
-    container_name: bitbank_reverse_payment_outbox
+      dockerfile: reverse-payment-service/dockerfile
+    container_name: reverse-payment-outbox
     command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/reverse_payment.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: reverse_payment_outbox
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: reverse-payment-outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - reverse_payment_data:/data
@@ -393,16 +410,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  notify_merchant_service:
+  notify-merchant-service:
+    image: notify-merchant-service:latest
     build:
       context: .
-      dockerfile: notify_merchant_service/dockerfile
-    container_name: bitbank_notify_merchant_service
+      dockerfile: notify-merchant-service/dockerfile
+    container_name: notify-merchant-service
     environment:
       DATABASE_PATH: /data/notify_merchant.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: notify_merchant_service
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify-merchant-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     ports:
       - "8005:8004"
@@ -413,17 +431,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  notify_merchant_consumer:
+  notify-merchant-consumer:
+    image: notify-merchant-consumer:latest
     build:
       context: .
-      dockerfile: notify_merchant_service/dockerfile
-    container_name: bitbank_notify_merchant_consumer
+      dockerfile: notify-merchant-service/dockerfile
+    container_name: notify-merchant-consumer
     command: ["python", "consumer.py"]
     environment:
       DATABASE_PATH: /data/notify_merchant.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: notify_merchant_consumer
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify-merchant-consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - notify_merchant_data:/data
@@ -432,16 +451,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  notify_customer_service:
+  notify-customer-service:
+    image: notify-customer-service:latest
     build:
       context: .
-      dockerfile: notify_customer_service/dockerfile
-    container_name: bitbank_notify_customer_service
+      dockerfile: notify-customer-service/dockerfile
+    container_name: notify-customer-service
     environment:
       DATABASE_PATH: /data/notify_customer.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: notify_customer_service
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify-customer-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     ports:
       - "8006:8004"
@@ -452,17 +472,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  notify_customer_consumer:
+  notify-customer-consumer:
+    image: notify-customer-consumer:latest
     build:
       context: .
-      dockerfile: notify_customer_service/dockerfile
-    container_name: bitbank_notify_customer_consumer
+      dockerfile: notify-customer-service/dockerfile
+    container_name: notify-customer-consumer
     command: ["python", "consumer.py"]
     environment:
       DATABASE_PATH: /data/notify_customer.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: notify_customer_consumer
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify-customer-consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - notify_customer_data:/data
@@ -471,16 +492,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  issue_receipt_service:
+  issue-receipt-service:
+    image: issue-receipt-service:latest
     build:
       context: .
-      dockerfile: issue_receipt_service/dockerfile
-    container_name: bitbank_issue_receipt_service
+      dockerfile: issue-receipt-service/dockerfile
+    container_name: issue-receipt-service
     environment:
       DATABASE_PATH: /data/issue_receipt.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: issue_receipt_service
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: issue-receipt-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     ports:
       - "8007:8000"
@@ -491,17 +513,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  issue_receipt_consumer:
+  issue-receipt-consumer:
+    image: issue-receipt-consumer:latest
     build:
       context: .
-      dockerfile: issue_receipt_service/dockerfile
-    container_name: bitbank_issue_receipt_consumer
+      dockerfile: issue-receipt-service/dockerfile
+    container_name: issue-receipt-consumer
     command: ["python", "consumer.py"]
     environment:
       DATABASE_PATH: /data/issue_receipt.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: issue_receipt_consumer
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: issue-receipt-consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - issue_receipt_data:/data
@@ -510,17 +533,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  notify_merchant_outbox:
+  notify-merchant-outbox:
+    image: notify-merchant-outbox:latest
     build:
       context: .
-      dockerfile: notify_merchant_service/dockerfile
-    container_name: bitbank_notify_merchant_outbox
+      dockerfile: notify-merchant-service/dockerfile
+    container_name: notify-merchant-outbox
     command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/notify_merchant.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: notify_merchant_outbox
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify-merchant-outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - notify_merchant_data:/data
@@ -529,17 +553,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  notify_customer_outbox:
+  notify-customer-outbox:
+    image: notify-customer-outbox:latest
     build:
       context: .
-      dockerfile: notify_customer_service/dockerfile
-    container_name: bitbank_notify_customer_outbox
+      dockerfile: notify-customer-service/dockerfile
+    container_name: notify-customer-outbox
     command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/notify_customer.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: notify_customer_outbox
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: notify-customer-outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - notify_customer_data:/data
@@ -548,17 +573,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  issue_receipt_outbox:
+  issue-receipt-outbox:
+    image: issue-receipt-outbox:latest
     build:
       context: .
-      dockerfile: issue_receipt_service/dockerfile
-    container_name: bitbank_issue_receipt_outbox
+      dockerfile: issue-receipt-service/dockerfile
+    container_name: issue-receipt-outbox
     command: ["python", "outbox_worker.py"]
     environment:
       DATABASE_PATH: /data/issue_receipt.db
-      RABBITMQ_URL: amqp://bitbank:bitbank@rabbitmq:5672/%2F
-      OTEL_SERVICE_NAME: issue_receipt_outbox
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel_collector:4318
+      RABBITMQ_URL: amqp://challenge:challenge@rabbitmq:5672/%2F
+      OTEL_SERVICE_NAME: issue-receipt-outbox
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       LOG_LEVEL: INFO
     volumes:
       - issue_receipt_data:/data
